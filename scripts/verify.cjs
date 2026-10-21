@@ -1,0 +1,10 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..'),folder=path.join(root,'extension'),manifest=JSON.parse(fs.readFileSync(path.join(folder,'manifest.json'),'utf8'));
+const sources=['core.js','dom.js','content.js'].map(name=>fs.readFileSync(path.join(folder,name),'utf8').replace(/\r\n/g,'\n')).join('\n');
+assert.equal(fs.readFileSync(path.join(folder,'content.bundle.js'),'utf8').replace(/\r\n/g,'\n'),sources,'Run npm run build after source changes');
+for(const name of fs.readdirSync(folder).filter(name=>name.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(folder,name),'utf8'),{filename:name});
+const required=manifest.content_scripts.flatMap(group=>group.js).concat(Object.values(manifest.icons),manifest.action.default_popup,manifest.background.service_worker,manifest.options_page,'LICENSE','THIRD_PARTY_NOTICES.txt','third-party/xpandmax-LICENSE.txt');
+for(const name of required)assert.ok(fs.existsSync(path.join(folder,name)),name);
+assert.deepEqual(manifest.permissions,['storage','activeTab']);assert.equal(manifest.host_permissions,undefined);
+assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version,manifest.version);
+console.log('PASS bundle, JavaScript syntax, manifest resources, permissions, version and licenses');
