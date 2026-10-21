@@ -13,6 +13,12 @@
     $('local-note').hidden = $('provider').value !== 'local';
     $('google-note').hidden = $('provider').value !== 'google';
     $('test-note').hidden = $('provider').value === 'local';
+    $('anthropic-note').hidden = $('provider').value !== 'anthropic';
+    $('remember-key').disabled = !custom;
+    try {
+      const origin = new URL($('provider').value === 'google' ? 'https://translate.googleapis.com' : $('endpoint').value).origin;
+      $('permission-preview').textContent = $('provider').value === 'local' ? '本机翻译无需额外站点授权。' : `保存时将请求访问：${origin}`;
+    } catch { $('permission-preview').textContent = '填写接口后，这里会显示将要申请的域名。'; }
     for (const id of fields) $(id).disabled = !custom;
     $('endpoint').required = custom;
     $('model').required = custom;
@@ -32,6 +38,7 @@
       config.endpoint = $('endpoint').value.trim();
       config.apiKey = $('api-key').value.trim();
       config.model = $('model').value.trim();
+      config.rememberKey = $('remember-key').checked;
     }
     try {
       $('settings').disabled = true;
@@ -51,6 +58,7 @@
       dirty = false;
       if (!customProvider(savedProvider)) for (const id of fields) $(id).value = '';
       status.textContent = '已保存；已打开的 X 页面会使用新设置';
+      await showPermissions();
     } catch (error) {
       status.textContent = error instanceof TypeError ? '接口地址无效，设置未保存' : error.message;
     } finally { $('settings').disabled = false; render(); }
@@ -64,15 +72,44 @@
     } catch (error) { status.textContent = error.message; }
     finally { $('settings').disabled = false; render(); }
   });
-  send({ type: 'translation-config' }).then(config => {
+  async function showPermissions() {
+    const granted = await chrome.permissions.getAll();
+    const list = $('granted-origins');
+    list.replaceChildren();
+    const origins = (granted.origins || []).filter(origin => origin.startsWith('https://') && !['https://x.com/*', 'https://twitter.com/*', 'https://pro.x.com/*'].includes(origin));
+    if (!origins.length) { const row = document.createElement('li'); row.textContent = '暂无额外站点授权'; list.append(row); }
+    for (const origin of origins) {
+      const row = document.createElement('li'), label = document.createElement('span'), button = document.createElement('button');
+      label.textContent = origin;
+      button.type = 'button'; button.textContent = '撤销'; button.setAttribute('aria-label', `撤销 ${origin}`);
+      button.onclick = async () => {
+        button.disabled = true;
+        try {
+          if (!await chrome.permissions.remove({ origins: [origin] })) throw new Error('未能撤销，请在浏览器扩展设置中检查');
+          const config = await send({ type: 'translation-config' });
+          const current = config.provider === 'google' ? 'https://translate.googleapis.com/' : config.endpoint;
+          if (current && new URL(current).origin === origin.replace(/\/\*$/, '')) await send({ type: 'translation-save', config: { provider: 'local' } });
+          await load();
+          status.textContent = '已撤销站点授权；当前服务如受影响，已恢复本机翻译并清除 Key。';
+        } catch (error) { status.textContent = error.message; button.disabled = false; }
+      };
+      row.append(label, button); list.append(row);
+    }
+  }
+  async function load() {
+    const config = await send({ type: 'translation-config' });
     savedProvider = ['custom', 'google', 'gemini', 'anthropic'].includes(config.provider) ? config.provider : 'local';
     $('provider').value = savedProvider;
     $('endpoint').value = config.endpoint || '';
     $('api-key').value = config.apiKey || '';
     $('model').value = config.model || '';
+    $('remember-key').checked = config.rememberKey === true;
+    dirty = false;
     $('settings').disabled = false;
-    status.textContent = '修改后请保存；测试仅使用已保存的配置';
+    status.textContent = config.keyExpired ? '本次会话的 Key 已清除，请重新填写并保存。' : '修改后请保存；测试仅使用已保存的配置';
     render();
-  }).catch(() => { status.textContent = '读取设置失败，请重新打开插件设置'; });
+    await showPermissions();
+  }
+  load().catch(() => { status.textContent = '读取设置失败，请重新打开插件设置'; });
 })();
 

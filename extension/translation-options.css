@@ -18,4 +18,11 @@ button:disabled { opacity: .5; cursor: default; }
 #status { min-height: 24px; overflow-wrap: anywhere; }
 #test-note { font-size: 12px; }
 [hidden] { display: none !important; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 400; }
+.check input { width: auto; }
+section { margin-top: 32px; border-top: 1px solid #8899a655; padding-top: 16px; }
+h2 { font-size: 19px; }
+#granted-origins { list-style: none; padding: 0; }
+#granted-origins li { display: flex; align-items: center; gap: 12px; margin: 12px 0; }
+#granted-origins span { flex: 1; overflow-wrap: anywhere; }
 

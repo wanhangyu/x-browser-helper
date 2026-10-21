@@ -32,6 +32,9 @@
           <label for="api-key">API Key</label>
           <input id="api-key" type="password" autocomplete="off" spellcheck="false" maxlength="4096">
           <small>服务商不需要 Key 时可留空；请勿使用 X 的登录令牌。</small>
+          <label class="check"><input id="remember-key" type="checkbox">在此浏览器记住 Key</label>
+          <small>默认仅本次会话使用；重启浏览器、重载或更新扩展后需重新填写。勾选后会保存在本地，非加密保险箱，不会云端同步。</small>
+          <p id="anthropic-note" hidden>Anthropic 协议会携带允许浏览器直连的请求头，Key 会发送到你填写的接口域名。请确认该域名由你信任的服务商控制。</p>
           <label for="model">模型名称</label>
           <input id="model" type="text" placeholder="服务商提供的模型 ID" autocomplete="off" spellcheck="false" maxlength="128">
         </div>
@@ -41,6 +44,13 @@
         </div>
       </fieldset>
     </form>
+    <section aria-labelledby="permissions-heading">
+      <h2 id="permissions-heading">翻译站点授权</h2>
+      <p>保存在线翻译时，仅请求对应 HTTPS 域名。为支持你自己的接口地址，插件声明可选域名范围，并不默认获得所有网站的访问权。</p>
+      <p id="permission-preview" role="status"></p>
+      <ul id="granted-origins"></ul>
+      <small>撤销当前翻译域名后会停用在线翻译并清除 Key；可重新保存设置再授权。</small>
+    </section>
     <p id="test-note" hidden>测试会发送一句虚构示例“I build useful tools.”，自定义 API 可能产生少量费用。</p>
     <p id="status" role="status" aria-live="polite">正在读取设置…</p>
   </main>

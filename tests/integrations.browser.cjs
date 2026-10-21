@@ -57,6 +57,24 @@ await page.locator('#outer > [data-testid="User-Name"] .why-heat').waitFor();
   const worker=context.serviceWorkers()[0]||await context.waitForEvent('serviceworker'),id=new URL(worker.url()).host;
   const options=await context.newPage();await options.goto(`chrome-extension://${id}/translation-options.html`);await options.locator('#settings').waitFor({state:'visible'});await options.locator('#save').click();await options.waitForFunction(()=>document.querySelector('#status').textContent.includes('已保存'));assert.equal(await options.locator('#provider').inputValue(),'local');
   console.log('PASS settings page actually loads and saves through service worker');
+  assert.equal(await options.locator('#remember-key').isChecked(),false);
+  await options.locator('#provider').selectOption('custom');await options.locator('#endpoint').fill('https://fixture.example');await options.locator('#model').fill('fixture-model');await options.locator('#api-key').fill('fixture-session-key');
+  assert.ok((await options.locator('#permission-preview').textContent()).includes('https://fixture.example'));
+  // Only this isolated options page fakes permission grants; no real service or credentials are used.
+  await options.evaluate(()=>{chrome.permissions.request=async()=>true;chrome.permissions.getAll=async()=>({origins:['https://fixture.example/*']});chrome.permissions.remove=async()=>true;});
+  await options.addInitScript(()=>{chrome.permissions.request=async()=>true;chrome.permissions.getAll=async()=>({origins:['https://fixture.example/*']});chrome.permissions.remove=async()=>true;});
+  await worker.evaluate(()=>{chrome.permissions.contains=async()=>true;});
+  await options.locator('#save').click();await options.waitForFunction(()=>document.querySelector('#status').textContent.includes('已保存'));
+  let keyState=await worker.evaluate(async()=>({local:(await chrome.storage.local.get('translationConfig')).translationConfig,session:(await chrome.storage.session.get('translationKey')).translationKey}));
+  assert.equal(keyState.local.apiKey,undefined);assert.equal(keyState.session.value,'fixture-session-key');
+  await options.reload();await options.waitForFunction(()=>!document.querySelector('#settings').disabled);assert.equal(await options.locator('#api-key').inputValue(),'fixture-session-key');
+  await worker.evaluate(()=>chrome.storage.session.clear());await options.reload();await options.waitForFunction(()=>document.querySelector('#status').textContent.includes('Key 已清除'));assert.equal(await options.locator('#api-key').inputValue(),'');
+  await options.locator('#api-key').fill('fixture-remembered-key');await options.locator('#remember-key').check();await options.locator('#save').click();await options.waitForFunction(()=>document.querySelector('#status').textContent.includes('已保存'));
+  assert.equal(await worker.evaluate(async()=>(await chrome.storage.local.get('translationConfig')).translationConfig.apiKey),'fixture-remembered-key');
+  await options.getByRole('button',{name:'撤销 https://fixture.example/*',exact:true}).click();await options.waitForFunction(()=>document.querySelector('#status').textContent.includes('已撤销'));
+  assert.equal(await options.locator('#provider').inputValue(),'local');assert.equal(await options.locator('#api-key').inputValue(),'');
+  assert.equal(await worker.evaluate(async()=>(await chrome.storage.local.get('translationConfig')).translationConfig.apiKey),undefined);
+  console.log('PASS settings UI: domain preview, session-only keys, session expiry, explicit remember and revoke/clear');
   // Only this disposable test worker uses controlled permissions and fake online replies.
   await worker.evaluate(()=>{
    self.testOriginalFetch=self.fetch;chrome.permissions.contains=async()=>true;
