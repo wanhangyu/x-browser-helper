@@ -1,0 +1,20 @@
+{
+  "name": "x-browser-helper",
+  "version": "1.6.1",
+  "private": true,
+  "description": "X 浏览助手：账号信息、帖子热度榜、固定搜索、简介翻译与沉浸阅读。",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "verify": "node scripts/verify.cjs",
+    "test": "node scripts/verify.cjs && node tests/core.test.cjs && node tests/translation.test.cjs",
+    "test:browser": "node scripts/test-browser.cjs",
+    "package": "python scripts/package.py"
+  },
+  "devDependencies": {
+    "playwright": "1.62.1"
+  }
+}
