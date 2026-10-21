@@ -1,6 +1,6 @@
 {
   "name": "x-browser-helper",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "private": true,
   "description": "X 浏览助手：账号信息、帖子热度榜、固定搜索、简介翻译与沉浸阅读。",
   "license": "MIT",

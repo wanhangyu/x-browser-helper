@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X 浏览助手",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "description": "X 帖子平均热度、本页热点榜、账号粉丝与简介翻译、固定搜索、沉浸阅读，帮助你发现和筛选有价值的内容。",
   "permissions": [
     "storage",
