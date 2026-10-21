@@ -18,7 +18,7 @@ const fs=require('node:fs'),path=require('node:path');
  try{
   await page.goto('https://x.com/home');
   await page.waitForSelector('#why-x-helper',{timeout:8000,state:'attached'});
-  if(await page.locator('#panel').isHidden())await page.getByRole('button',{name:'打开 X 浏览助手',exact:true}).click();
+  if(await page.locator('#panel').isHidden())await page.locator('#dockTab').click();
   await page.waitForTimeout(600);
   await page.locator('#resetLayout').click();
   await page.evaluate(()=>{
@@ -66,11 +66,7 @@ const fs=require('node:fs'),path=require('node:path');
    if(await page.locator('#auditCards .why-follower').count()!==200)throw Error('repeated scanning duplicated badges');
    await page.evaluate(()=>document.querySelector('#auditCards').remove());
   });
-  const launch=page.locator('#launch'),before=await launch.boundingBox();
-  await page.mouse.move(before.x+before.width/2,before.y+before.height/2);await page.mouse.down();await page.mouse.move(900,850,{steps:8});await page.mouse.up();
-  const after=await launch.boundingBox();if(Math.abs(before.x-after.x)<30)throw new Error('Launcher did not move');
-  const paneWasVisible=await page.locator('#panel').isVisible();if(!paneWasVisible)throw new Error('Dragging launcher accidentally toggled panel');
-  await page.locator('#fold').click();if(await page.locator('#panel').evaluate(e=>e.getBoundingClientRect().height)>60)throw new Error('Panel did not fold');await page.locator('#fold').click();
+  await page.locator('#fold').click();if(await page.locator('#panel').isVisible())throw Error('Minus must collapse to edge');await page.locator('#dockTab').click();
   const panelBefore=await page.locator('#panel').boundingBox(),grip=await page.locator('#resize').boundingBox();
   await page.mouse.move(grip.x+10,grip.y+10);await page.mouse.down();await page.mouse.move(grip.x-65,grip.y-95,{steps:8});await page.mouse.up();
   const panelAfter=await page.locator('#panel').boundingBox();if(panelAfter.width>=panelBefore.width||panelAfter.height>=panelBefore.height)throw new Error('Panel did not resize');
@@ -79,7 +75,7 @@ const fs=require('node:fs'),path=require('node:path');
   await page.waitForTimeout(250);await page.reload();await page.waitForSelector('#why-x-helper',{state:'attached'});await page.waitForTimeout(500);
   if(await page.locator('#why-x-helper').getAttribute('data-theme')!=='dark')throw new Error('Theme did not persist on reload');
   await page.locator('#themeChoice').selectOption('light');
-  await page.locator('#maxAge').selectOption('6');await page.waitForTimeout(350);
+  await page.locator('#openHeatOptions').click();await page.locator('#maxAge').selectOption('6');await page.waitForTimeout(350);
   const aged=await page.locator('article.why-hidden').count();if(aged!==1)throw new Error('Publication age filtering failed: '+aged);
   await page.locator('#heatPreset').selectOption('all');await page.waitForTimeout(350);
   if(await page.locator('article.why-hidden').count())throw new Error('All-posts preset did not restore posts');
@@ -104,11 +100,9 @@ const fs=require('node:fs'),path=require('node:path');
    const card=page.locator('#why-x-helper .card').first();await card.locator('[data-edit]').click();await page.locator('#searchName').fill('未保存的改稿');await page.locator('#searchQuery').fill('draft-value');await card.locator('[data-pin]').click();if(await page.locator('#searchName').inputValue()!=='未保存的改稿'||await page.locator('#searchQuery').inputValue()!=='draft-value')throw Error('draft cleared but editing target still retained');
   });
   await page.locator('button[data-tab="heat"]').click();
-  await audit('Manual filter changes clear the preset label',async()=>{await page.locator('#heatPreset').selectOption('following');await page.locator('#heatOptions').evaluate(e=>e.open=true);await page.locator('#resetFilter').click();if(await page.locator('#heatPreset').inputValue()!=='custom')throw Error('preset still says following after disabling filtering');await page.locator('#heatPreset').selectOption('all');});
+  await audit('Manual filter changes clear the preset label',async()=>{await page.locator('#openHeatOptions').click();await page.locator('#heatPreset').selectOption('following');await page.locator('#heatOptions').evaluate(e=>e.open=true);await page.locator('#resetFilter').click();if(await page.locator('#heatPreset').inputValue()!=='custom')throw Error('preset still says following after disabling filtering');await page.locator('#heatPreset').selectOption('all');});
 
-  const edgeStart=await launch.boundingBox();await page.mouse.move(edgeStart.x+10,edgeStart.y+10);await page.mouse.down();await page.mouse.move(2,400,{steps:10});await page.mouse.up();
-  if(!(await launch.getAttribute('class')).includes('docked'))throw new Error('Launcher did not dock at edge');
-  console.log('LAYOUT INTERACTIONS: launcher drag, no accidental toggle, fold, resize and edge dock passed');
+  console.log('LAYOUT INTERACTIONS: minus-to-edge, tab-to-expand, resize and persistence passed');
   await page.locator('#resetLayout').click();
   console.log('REAL EXTENSION:',await page.evaluate(()=>{const s=document.querySelector('#why-x-helper')?.shadowRoot;return{panel:!!s&&!s.querySelector('#panel').hidden,followers:[...document.querySelectorAll('.why-follower')].map(x=>x.textContent),heat:[...document.querySelectorAll('.why-heat')].map(x=>x.textContent)};}));
   await page.screenshot({path:'artifacts/screenshots/browser.png'});
@@ -129,12 +123,12 @@ const fs=require('node:fs'),path=require('node:path');
    },title);await page.waitForTimeout(600);
   }
   await makeDetail();
-  await audit('Detail page follower and heat badges align with name; handle stays below',async()=>{
-   const layout=await page.evaluate(()=>{const name=document.querySelector('#detailName').getBoundingClientRect(),f=document.querySelector('#detailNameLink .why-follower'),h=document.querySelector('#detailNameLink .why-heat'),handle=document.querySelector('#detailHandle').getBoundingClientRect();const center=r=>r.top+r.height/2;return{same:!!f&&!!h&&Math.abs(center(name)-center(f.getBoundingClientRect()))<2&&Math.abs(center(name)-center(h.getBoundingClientRect()))<2,handleBelow:handle.top>=name.bottom,counts:[document.querySelectorAll('#detailHeader .why-follower').length,document.querySelectorAll('#detailHeader .why-heat').length]};});
+  await audit('Detail page right-side heat and follower badges align with name; handle stays below',async()=>{
+   const layout=await page.evaluate(()=>{const name=document.querySelector('#detailName').getBoundingClientRect(),f=document.querySelector('#detailNameLink .why-follower'),h=document.querySelector('#detailHeader .why-heat'),handle=document.querySelector('#detailHandle').getBoundingClientRect();const center=r=>r.top+r.height/2;return{same:!!f&&!!h&&Math.abs(center(name)-center(f.getBoundingClientRect()))<2&&Math.abs(center(name)-center(h.getBoundingClientRect()))<2,handleBelow:handle.top>=name.bottom,counts:[document.querySelectorAll('#detailHeader .why-follower').length,document.querySelectorAll('#detailHeader .why-heat').length]};});
    if(!layout.same||!layout.handleBelow||layout.counts.some(n=>n!==1))throw Error(JSON.stringify(layout));
   });
-  await page.locator('.close').click();await page.screenshot({path:'artifacts/screenshots/browser.png'});
-  await page.getByRole('button',{name:'打开 X 浏览助手',exact:true}).click();
+  await page.locator('#fold').click();await page.screenshot({path:'artifacts/screenshots/browser.png'});
+  await page.locator('#dockTab').click();
   await audit('Compact toggle changes widths, keeps full follower count in tooltip, persists',async()=>{
    const small=await page.locator('#detailNameLink .why-follower').evaluate(e=>e.getBoundingClientRect().width);
    if(!(await page.locator('#detailNameLink .why-follower').getAttribute('title')).includes('1,200 位粉丝'))throw Error('exact follower count missing');
@@ -144,7 +138,7 @@ const fs=require('node:fs'),path=require('node:path');
   await makeDetail('非常长的账号名称与科技工具分享'.repeat(4));
   await audit('Narrow detail header truncates long name without overlapping follow button',async()=>{
    await page.evaluate(()=>document.querySelector('main').style.width='440px');await page.waitForTimeout(400);
-   const ok=await page.evaluate(()=>{const h=document.querySelector('#detailNameLink .why-heat').getBoundingClientRect(),f=document.querySelector('#detailFollow').getBoundingClientRect(),name=document.querySelector('#detailName').getBoundingClientRect();return h.right<f.left&&Math.abs(h.top+h.height/2-name.top-name.height/2)<2;});if(!ok)throw Error('labels overflow name area or wrap');
+   const ok=await page.evaluate(()=>{const h=document.querySelector('#detailHeader .why-heat').getBoundingClientRect(),f=document.querySelector('#detailFollow').getBoundingClientRect(),name=document.querySelector('#detailName').getBoundingClientRect();return h.right<f.left&&Math.abs(h.top+h.height/2-name.top-name.height/2)<2;});if(!ok){await page.screenshot({path:'artifacts/screenshots/detail-layout-failure.png'});throw Error('labels overflow name area or wrap '+JSON.stringify(await page.evaluate(()=>['#detailHeader .why-heat','#detailName','#detailFollow'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return {selector:s,x:r.x,y:r.y,width:r.width,height:r.height};}))));}
   });
   await audit('Disabling both badges removes detail-only layout class',async()=>{
    await page.locator('button[data-tab="accounts"]').click();await page.locator('#followerToggle').uncheck();await page.locator('button[data-tab="heat"]').click();await page.locator('#heatOptions').evaluate(e=>e.open=true);await page.locator('#heatToggle').uncheck();await page.waitForTimeout(400);if(await page.locator('#detailHeader .why-inline-header,#detailHeader .why-follower,#detailHeader .why-heat').count())throw Error('old styles or badges remain');await page.locator('#heatToggle').check();await page.locator('button[data-tab="accounts"]').click();await page.locator('#followerToggle').check();await page.locator('button[data-tab="heat"]').click();await page.waitForTimeout(400);

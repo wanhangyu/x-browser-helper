@@ -1,8 +1,8 @@
 
 (()=>{
  'use strict';if(window.__WHY_UI__)return;window.__WHY_UI__=true;
- const C=globalThis.WHYCore,accounts=new Map(),posts=new Map();let settings={followers:true,heat:true,panel:false,minRate:0,minViews:0,longRate:0,topN:10,trending:1000,viral:10000,onlyHot:false,scopes:['home'],columns:['rank','tier','author','preview','views','rate'],theme:'light',compactLabels:true,maxAge:0,searchGroup:'全部'};
- let searches=[],tab='heat',editId=null,searchDraft=null,host,shadow,scanTimer,saveTimer,renderTimer,visible=[];let selectedId=null,returnPosition=null,lineFrame=0,dragging=false,suppressLaunchClickUntil=0;
+ const C=globalThis.WHYCore,accounts=new Map(),posts=new Map();let settings={followers:true,heat:true,panel:false,minRate:0,minViews:0,longRate:0,topN:10,trending:1000,viral:10000,onlyHot:false,scopes:['home'],columns:['rank','tier','author','preview','views','rate'],theme:'light',compactLabels:true,heatPlacement:'after-time',maxAge:0,searchGroup:'全部'};
+ let searches=[],tab='heat',editId=null,searchDraft=null,host,shadow,scanTimer,saveTimer,renderTimer,visible=[];let selectedId=null,returnPosition=null,lineFrame=0,dragging=false,readingOptions={bios:false};
  const defaults=[
   {id:'ai',name:'AI 工具 · 最近一周',query:'("AI tools" OR "AI工具")',days:7,likes:50,original:true},
   {id:'github',name:'GitHub 新发现',query:'github ("open source" OR "开源")',days:7,likes:20,original:true},
@@ -35,7 +35,7 @@
   }return null;
  }
  function postNameTarget(node,handle){
-  const existing=node.querySelector('.why-inline-header');if(existing)return existing;
+  const existing=[...node.querySelectorAll('.why-inline-header')].find(n=>!n.querySelector('time'));if(existing)return existing;
   const links=[...node.querySelectorAll('a[href]')].filter(a=>{try{return new URL(a.href,location.href).pathname.replace(/\/$/,'').toLowerCase()==='/'+handle&&!a.querySelector('img')&&a.textContent.trim()&&!a.textContent.trim().startsWith('@');}catch{return false;}});
   let label=links[0];
   if(!label)return node.querySelector('[dir="auto"]:not(.why-follower):not(.why-heat)')||node;
@@ -49,11 +49,35 @@
   }
   return target;
  }
+ // Keep X's name/handle stack intact; reserve a separate right-side slot.
+ function placeHeat(header,handle,b){
+  const right=settings.heatPlacement==='right';
+  const timeLink=settings.heatPlacement==='after-time'?header.querySelector('time')?.closest('a'):null;
+  const follower=timeLink&&header.querySelector('.why-follower[data-placement="after-time"]');
+  const anchor=follower&&!follower.hidden?follower:timeLink;
+  const target=right?header:anchor?anchor.parentElement:postNameTarget(header,handle);
+  header.classList.toggle('why-heat-header',right);
+  if(right){
+   const path=[header];
+   for(let child=header,parent=header.parentElement;parent&&!parent.matches('article,[data-testid="quoteTweet"],[role="link"]');child=parent,parent=parent.parentElement){
+    const controls=[...parent.children].some(sibling=>sibling!==child&&(sibling.matches('[data-testid="caret"],button')||sibling.querySelector('[data-testid="caret"],button[aria-label*="Grok"]')));
+    if(controls&&getComputedStyle(parent).flexDirection==='row'){path.forEach(n=>n.classList.add('why-heat-grow'));break;}
+    path.push(parent);
+   }
+  }
+  b.dataset.placement=right?'right':timeLink?'after-time':'name';
+  if(anchor){if(anchor.nextElementSibling!==b)anchor.after(b);}else if(b.parentElement!==target)target.append(b);
+  if(!right)target.classList.add('why-inline-header');
+ }
  function cleanHeaderStyles(){
-  for(const row of document.querySelectorAll('.why-inline-header'))if(![...row.querySelectorAll('.why-follower,.why-heat')].some(b=>!b.hidden))row.classList.remove('why-inline-header');
+  for(const row of document.querySelectorAll('.why-heat-grow'))if(!row.querySelector('.why-heat[data-placement=right]'))row.classList.remove('why-heat-grow');
+  for(const row of document.querySelectorAll('.why-follower-time-row'))if(!row.querySelector('.why-follower[data-placement=after-time]'))row.classList.remove('why-follower-time-row');
+  for(const row of document.querySelectorAll('.why-heat-header'))if(!row.querySelector(':scope > .why-heat[data-placement=right]'))row.classList.remove('why-heat-header');
+  for(const row of document.querySelectorAll('.why-inline-header'))if(![...row.querySelectorAll('.why-follower:not([data-placement=after-time]),.why-heat:not([data-placement=right])')].some(b=>!b.hidden))row.classList.remove('why-inline-header');
  }
  function badge(node,handle){
   const u=accounts.get(handle);let b=node.querySelector('.why-follower');
+  const timeLink=node.matches('[data-testid="User-Name"], [data-testid="UserName"]')?node.querySelector('time')?.closest('a'):null;
   let target=node.matches('[data-testid="User-Name"], [data-testid="UserName"]')?postNameTarget(node,handle):node;
   if(node.matches('[data-testid="UserCell"]')){
    const name=node.querySelector('[data-testid="User-Name"], [data-testid="UserName"]');
@@ -72,12 +96,15 @@
    if(settings.followers&&u&&Date.now()-u.at<30*60000)target.classList.add('why-follower-row');else target.classList.remove('why-follower-row');
 
   }
+  if(timeLink)target=timeLink.parentElement;
   if(!settings.followers){node.querySelectorAll('.why-follower-row').forEach(e=>e.classList.remove('why-follower-row'));b?.remove();return;}
   if(!b){b=document.createElement('span');b.className='why-follower';target.append(b);}
   if(b.parentNode!==target){b.parentElement?.classList.remove('why-follower-row');target.append(b);}
+  b.dataset.placement=timeLink?'after-time':'name';
+  if(timeLink){if(timeLink.nextElementSibling!==b)timeLink.after(b);if(target!==node)target.classList.add('why-follower-time-row');}
   const fresh=u&&Date.now()-u.at<30*60000;
   b.hidden=!fresh;
-  if(fresh&&node.matches('[data-testid="User-Name"], [data-testid="UserName"]'))target.classList.add('why-inline-header');
+  if(fresh&&!timeLink&&node.matches('[data-testid="User-Name"], [data-testid="UserName"]'))target.classList.add('why-inline-header');
   b.dataset.compact=String(settings.compactLabels!==false);
   const value=fresh?(settings.compactLabels!==false?'👥 ':'粉丝 ')+C.format(u.followers):'粉丝 待加载';
   if(b.textContent!==value)b.textContent=value;
@@ -119,12 +146,10 @@
    const m=C.metrics(t);
    if(t&&!t.invalid){visible.push(t);if(t.estimated)posts.set(t.id,t);}
    if(!settings.heat){b?.remove();}else{
-    const name=info.header,target=name?postNameTarget(name,info.handle):(article.querySelector('[role="group"]')||article);
     if(!b){b=document.createElement('span');b.className='why-heat';}
-    if(b.parentElement!==target)target.append(b);
-    if(name)target.classList.add('why-inline-header');
+    placeHeat(info.header,info.handle,b);
     b.dataset.compact=String(settings.compactLabels!==false);
-    const label=m?.rate!=null?`${m.rate>=settings.viral?'🔥':m.rate>=settings.trending?'🚀':'🌱'} ${C.format(m.rate)}/h`:m?.young?'刚发布 · 等待样本':'热度待加载';
+    const label=m?.rate!=null?`${m.rate>=settings.viral?'🔥':m.rate>=settings.trending?'🚀':'🌱'} ${C.format(m.rate)}/h`:m?.young?'刚发布':'待加载';
     if(b.textContent!==label)b.textContent=label;
     b.dataset.tweetId=info.id;
     if(!b.dataset.whyTooltip){b.dataset.whyTooltip='1';b.tabIndex=0;b.addEventListener('mouseenter',()=>showMetrics(b));b.addEventListener('mouseleave',hideMetrics);b.addEventListener('focus',()=>showMetrics(b));b.addEventListener('blur',hideMetrics);}
@@ -141,7 +166,7 @@
     const qm=C.metrics(q.t);if(qm?.rate==null)continue;
     quoteHeaders.add(q.header);let qb=q.header.querySelector('.why-heat');
     if(!qb){qb=document.createElement('span');qb.className='why-heat';qb.tabIndex=0;qb.addEventListener('mouseenter',()=>showMetrics(qb));qb.addEventListener('mouseleave',hideMetrics);qb.addEventListener('focus',()=>showMetrics(qb));qb.addEventListener('blur',hideMetrics);}
-    const target=postNameTarget(q.header,q.handle);if(qb.parentElement!==target)target.append(qb);target.classList.add('why-inline-header');qb.dataset.tweetId=q.id;qb.dataset.compact=String(settings.compactLabels!==false);
+    placeHeat(q.header,q.handle,qb);qb.dataset.tweetId=q.id;qb.dataset.compact=String(settings.compactLabels!==false);
     const label=`${qm.rate>=settings.viral?'🔥':qm.rate>=settings.trending?'🚀':'🌱'} ${C.format(qm.rate)}/h`;
     if(qb.textContent!==label)qb.textContent=label;qb.dataset.level=qm.rate>=settings.viral?'hot':qm.rate>=settings.trending?'warm':'normal';qb.title='引用原帖的平均浏览量／小时；不是外层帖子的指标。';
    }
@@ -195,98 +220,134 @@
  }
 
  function saveLayout(){chrome.storage.local.set({whySettings:settings});queueConnector();}
+ // Fixed overlays stay inside the content viewport, including overlay scrollbars.
+ function safeViewport(){
+  const root=document.documentElement;
+  return {left:8,top:8,right:Math.min(innerWidth-20,(root.clientWidth||innerWidth)-8),bottom:Math.min(innerHeight-20,(root.clientHeight||innerHeight)-8)};
+ }
  function layoutSize(){
   const panel=shadow?.getElementById('panel');if(!panel)return;
-  const width=Math.max(Math.min(280,innerWidth-16),Math.min(innerWidth-16,Number(settings.size?.width)||410));
-  const height=Math.max(Math.min(260,innerHeight-16),Math.min(innerHeight-16,Number(settings.size?.height)||Math.min(650,innerHeight-120)));
-  panel.style.width=width+'px';panel.style.height=settings.collapsed?'52px':height+'px';panel.dataset.collapsed=String(!!settings.collapsed);
-  const fold=shadow.getElementById('fold');if(fold){fold.textContent=settings.collapsed?'＋':'−';fold.setAttribute('aria-label',settings.collapsed?'展开浏览助手':'折叠浏览助手');}
- }
- function positionLauncher(){
-  const button=shadow?.getElementById('launch');if(!button)return;
-  button.classList.toggle('docked',!!settings.launcherDock);button.dataset.edge=settings.launcherDock||'';
-  button.setAttribute('aria-expanded',String(!!settings.panel));button.setAttribute('aria-label',settings.panel?'隐藏 X 浏览助手':'打开 X 浏览助手');
-  button.title=(settings.panel?'点击隐藏助手':'点击打开助手')+'；拖动可移动，贴边可收起';
-  if(!settings.launcherPosition){button.style.left='auto';button.style.top='auto';button.style.right='16px';button.style.bottom='26px';return;}
-  const width=button.offsetWidth,height=button.offsetHeight;
-  let x=Math.max(0,Math.min(innerWidth-width,Number(settings.launcherPosition.x)||0));
-  if(settings.launcherDock==='left')x=0;if(settings.launcherDock==='right')x=innerWidth-width;
-  const y=Math.max(8,Math.min(innerHeight-height-8,Number(settings.launcherPosition.y)||0));
-  button.style.left=x+'px';button.style.top=y+'px';button.style.right='auto';button.style.bottom='auto';
+  const bounds=safeViewport(),availableWidth=Math.max(1,bounds.right-bounds.left),availableHeight=Math.max(1,bounds.bottom-bounds.top);
+  const width=Math.max(Math.min(280,availableWidth),Math.min(availableWidth,Number(settings.size?.width)||360));
+  const height=Math.max(Math.min(260,availableHeight),Math.min(availableHeight,Number(settings.size?.height)||Math.min(650,innerHeight-120)));
+  panel.style.width=width+'px';panel.style.height=height+'px';
  }
  function installLayoutControls(){
-  const panel=shadow.getElementById('panel'),launch=shadow.getElementById('launch'),resize=shadow.getElementById('resize');
-  launch.style.touchAction='none';
-  launch.addEventListener('pointerdown',event=>{
-   if(event.button!==0)return;const rect=launch.getBoundingClientRect(),sx=event.clientX,sy=event.clientY;let moved=false;
-   launch.setPointerCapture(event.pointerId);
-   function move(e){if(Math.hypot(e.clientX-sx,e.clientY-sy)<4&&!moved)return;moved=true;dragging=true;settings.launcherDock=null;settings.launcherPosition={x:rect.left+e.clientX-sx,y:rect.top+e.clientY-sy};positionLauncher();}
-   function end(){launch.removeEventListener('pointermove',move);launch.removeEventListener('pointerup',end);launch.removeEventListener('pointercancel',end);dragging=false;if(!moved)return;suppressLaunchClickUntil=Date.now()+500;const r=launch.getBoundingClientRect();settings.launcherDock=r.left<18?'left':r.right>innerWidth-18?'right':null;positionLauncher();saveLayout();}
-   launch.addEventListener('pointermove',move);launch.addEventListener('pointerup',end,{once:true});launch.addEventListener('pointercancel',end,{once:true});
-  });
-  shadow.getElementById('fold').onclick=()=>{settings.collapsed=!settings.collapsed;if(settings.collapsed)clearSelection();layoutSize();positionPanel();saveLayout();};
-  shadow.getElementById('resetLayout').onclick=()=>{settings.position=null;settings.launcherPosition=null;settings.launcherDock=null;settings.size=null;settings.collapsed=false;panel.style.left='auto';panel.style.top='100px';panel.style.right='18px';panel.style.bottom='auto';layoutSize();positionLauncher();saveLayout();};
+  const panel=shadow.getElementById('panel'),resize=shadow.getElementById('resize');
+  shadow.getElementById('fold').onclick=()=>toggle(false);
+  shadow.getElementById('resetLayout').onclick=()=>{settings.position=null;settings.panelDock=null;settings.tabDock=null;settings.tabPosition=null;settings.size=null;positionPanel();saveLayout();};
   resize.addEventListener('pointerdown',event=>{
-   if(event.button!==0||settings.collapsed)return;event.preventDefault();resize.setPointerCapture(event.pointerId);const r=panel.getBoundingClientRect(),sx=event.clientX,sy=event.clientY;dragging=true;
+   if(event.button!==0)return;event.preventDefault();resize.setPointerCapture(event.pointerId);const r=panel.getBoundingClientRect(),sx=event.clientX,sy=event.clientY;dragging=true;
    function move(e){settings.size={width:Math.min(innerWidth-r.left-8,Math.max(280,r.width+e.clientX-sx)),height:Math.min(innerHeight-r.top-8,Math.max(260,r.height+e.clientY-sy))};layoutSize();queueConnector();}
    function end(){dragging=false;resize.removeEventListener('pointermove',move);resize.removeEventListener('pointerup',end);resize.removeEventListener('pointercancel',end);saveLayout();}
    resize.addEventListener('pointermove',move);resize.addEventListener('pointerup',end,{once:true});resize.addEventListener('pointercancel',end,{once:true});
   });
   resize.addEventListener('keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key))return;event.preventDefault();const r=panel.getBoundingClientRect();settings.size={width:r.width+(event.key==='ArrowRight'?20:event.key==='ArrowLeft'?-20:0),height:r.height+(event.key==='ArrowDown'?20:event.key==='ArrowUp'?-20:0)};layoutSize();saveLayout();});
  }
+ function panelVisibility(){
+  const panel=shadow?.getElementById('panel'),handle=shadow?.getElementById('dockTab');if(!panel)return;
+  panel.hidden=!settings.panel;
+  handle.hidden=!!settings.panel;
+  positionTab();queueConnector();
+ }
+ function positionTab(){
+  const handle=shadow?.getElementById('dockTab');if(!handle)return;
+  const width=handle.offsetWidth||34,height=handle.offsetHeight||72,position=settings.tabPosition;
+  const edge=position?(['left','right'].includes(settings.tabDock)?settings.tabDock:null):(settings.tabDock||settings.panelDock||'right');
+  const bounds=safeViewport();
+  let x=position?Number(position.x)||0:edge==='left'?bounds.left:bounds.right-width;
+  let y=position?Number(position.y)||0:(Number(settings.position?.y)||100)+24;
+  x=edge==='left'?bounds.left:edge==='right'?bounds.right-width:Math.max(bounds.left,Math.min(bounds.right-width,x));
+  y=Math.max(bounds.top,Math.min(bounds.bottom-height,y));
+  handle.dataset.edge=edge||'';handle.style.left=x+'px';handle.style.right='auto';handle.style.top=y+'px';
+ }
+ function installTabDrag(){
+  const handle=shadow.getElementById('dockTab');
+  handle.onclick=e=>{if(e.detail===0)toggle(true);};
+  handle.addEventListener('pointerdown',event=>{
+   if(event.button!==0)return;const rect=handle.getBoundingClientRect(),sx=event.clientX,sy=event.clientY;let moved=false;handle.setPointerCapture(event.pointerId);
+   function move(e){if(!moved&&Math.hypot(e.clientX-sx,e.clientY-sy)<5)return;moved=true;dragging=true;settings.tabDock=null;settings.tabPosition={x:rect.left+e.clientX-sx,y:rect.top+e.clientY-sy};positionTab();}
+   function end(e){handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',end);handle.removeEventListener('pointercancel',end);dragging=false;
+    if(!moved){if(e.type==='pointerup')toggle(true);return;}
+    const r=handle.getBoundingClientRect(),bounds=safeViewport();settings.tabDock=r.left<=bounds.left+20?'left':r.right>=bounds.right-20?'right':null;settings.tabPosition={x:r.left,y:r.top};positionTab();saveLayout();
+   }
+   handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',end,{once:true});handle.addEventListener('pointercancel',end,{once:true});
+  });
+  handle.addEventListener('keydown',e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();const r=handle.getBoundingClientRect(),step=e.shiftKey?32:12;settings.tabDock=null;settings.tabPosition={x:r.left+(e.key==='ArrowLeft'?-step:e.key==='ArrowRight'?step:0),y:r.top+(e.key==='ArrowUp'?-step:e.key==='ArrowDown'?step:0)};positionTab();saveLayout();});
+ }
  function positionPanel(){
-  const panel=shadow?.getElementById('panel');if(!panel)return;layoutSize();if(!settings.position){panel.style.top=Math.min(100,Math.max(8,innerHeight-panel.offsetHeight-8))+'px';return;}
-  const x=Math.max(8,Math.min(innerWidth-panel.offsetWidth-8,Number(settings.position.x)||0));
-  const y=Math.max(8,Math.min(innerHeight-panel.offsetHeight-8,Number(settings.position.y)||0));
-  panel.style.left=x+'px';panel.style.top=y+'px';panel.style.right='auto';panel.style.bottom='auto';
+  const panel=shadow?.getElementById('panel');if(!panel)return;layoutSize();
+  const width=parseFloat(panel.style.width),height=parseFloat(panel.style.height),side=['left','right'].includes(settings.panelDock)?settings.panelDock:null;
+  const bounds=safeViewport();
+  let x=settings.position?Math.max(bounds.left,Math.min(bounds.right-width,Number(settings.position.x)||0)):Math.max(bounds.left,bounds.right-width-10);
+  const y=Math.max(bounds.top,Math.min(bounds.bottom-height,Number(settings.position?.y)||100));
+  if(side)x=side==='left'?bounds.left:bounds.right-width;
+  panel.dataset.dock=side||'';panel.style.left=x+'px';panel.style.top=y+'px';panel.style.right='auto';panel.style.bottom='auto';
+  panelVisibility();
  }
  function installPanelDrag(){
   const panel=shadow.getElementById('panel'),grip=shadow.querySelector('header');grip.title='拖动面板';grip.style.cursor='grab';grip.style.touchAction='none';
   grip.addEventListener('pointerdown',event=>{
    if(event.button!==0||event.target.closest('button'))return;
    const rect=panel.getBoundingClientRect(),dx=event.clientX-rect.left,dy=event.clientY-rect.top;dragging=true;grip.setPointerCapture(event.pointerId);grip.style.cursor='grabbing';
-   function move(e){settings.position={x:e.clientX-dx,y:e.clientY-dy};positionPanel();queueConnector();}
-   function stop(){dragging=false;grip.style.cursor='grab';grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',stop);grip.removeEventListener('pointercancel',stop);chrome.storage.local.set({whySettings:settings});}
+   function move(e){settings.panelDock=null;settings.position={x:e.clientX-dx,y:e.clientY-dy};positionPanel();queueConnector();}
+   function stop(){dragging=false;grip.style.cursor='grab';grip.removeEventListener('pointermove',move);grip.removeEventListener('pointerup',stop);grip.removeEventListener('pointercancel',stop);const r=panel.getBoundingClientRect(),bounds=safeViewport();settings.panelDock=r.left<=bounds.left+24?'left':r.right>=bounds.right-24?'right':null;positionPanel();saveLayout();}
    grip.addEventListener('pointermove',move);grip.addEventListener('pointerup',stop,{once:true});grip.addEventListener('pointercancel',stop,{once:true});
   });
  }
  const styles=`
  :host{all:initial;color:#e7efea;font:14px/1.5 "Segoe UI","Microsoft YaHei",sans-serif}
  *{box-sizing:border-box}button,input,select{font:inherit}button{cursor:pointer}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid #9aefab;outline-offset:3px}
- #launch{position:fixed;right:16px;bottom:26px;z-index:2147483600;background:#b3f2b8;color:#102216;border:0;border-radius:16px;padding:12px 17px;font-weight:700;box-shadow:0 6px 30px #0005}
  #panel{position:fixed;right:18px;top:100px;width:365px;max-width:calc(100vw - 30px);height:min(650px,calc(100vh - 120px));z-index:2147483600;background:#111914;border:1px solid #354339;border-radius:20px;box-shadow:0 20px 60px #0009;display:flex;flex-direction:column;overflow:hidden}
- #panel[hidden]{display:none}header{padding:23px 22px 16px;border-bottom:1px solid #2c382f}header small{color:#a9eeb0;font:11px Consolas,monospace;letter-spacing:2px}h1{font-size:23px;font-weight:650;letter-spacing:-.5px;margin:6px 0}header p{margin:0;color:#95a398;font-size:12px}.close{float:right;background:none;border:0;color:#a7b4ab;font-size:24px}
+ #panel[hidden]{display:none}header{padding:23px 22px 16px;border-bottom:1px solid #2c382f}header small{color:#a9eeb0;font:11px Consolas,monospace;letter-spacing:2px}h1{font-size:23px;font-weight:650;letter-spacing:-.5px;margin:6px 0}header p{margin:0;color:#95a398;font-size:12px}
  nav{display:flex;padding:12px 16px 0;gap:6px}nav button{flex:1;background:none;color:#9ba99f;border:0;padding:10px 3px;border-radius:9px}nav button.active{background:#28382b;color:#b3f2b8;font-weight:650}main{padding:17px 20px;overflow:auto;flex:1;scrollbar-width:thin;scrollbar-color:#425447 transparent}footer{padding:10px 20px;border-top:1px solid #2c382f;color:#798a7e;font-size:11px}
  .eyebrow{color:#a6b9ab;font-size:11px;letter-spacing:1px}.big{font:40px/1.2 Consolas,monospace;color:#b3f2b8;margin:4px 0 2px}.hint{font-size:12px;color:#8fa395;margin:6px 0 16px}.row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:13px 0}.row label{font-size:13px}.row input[type=number]{width:100px}.checks{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:#bac9be}input,select{background:#1d2921;border:1px solid #3b4d40;color:#ecf3ed;border-radius:8px;padding:9px;width:100%;min-width:0}input[type=checkbox]{width:16px;height:16px;accent-color:#b3f2b8}.checks label{display:flex;align-items:center;gap:6px}label.field{display:block;font-size:12px;color:#a5b6aa;margin:12px 0 5px}.pair{display:grid;grid-template-columns:1fr 1fr;gap:12px}.primary{background:#b3f2b8;border:0;color:#112017;border-radius:9px;padding:10px 14px;font-weight:650;width:100%;margin:13px 0}.secondary{background:#213127;border:1px solid #3c5042;color:#cae5d0;border-radius:8px;padding:6px 10px}.card{padding:13px 0;border-top:1px solid #2c382f}.card-top{display:flex;justify-content:space-between;align-items:center;gap:12px}.name{font-weight:650;overflow-wrap:anywhere}.score{font:17px Consolas,monospace;color:#b3f2b8;white-space:nowrap}.excerpt{font-size:12px;color:#a7b6ab;margin:5px 0;overflow-wrap:anywhere}.actions{display:flex;gap:7px;margin-top:9px}.query{font:11px/1.6 Consolas,monospace;color:#93ad9c;overflow-wrap:anywhere;background:#1a251e;border-radius:8px;padding:9px;margin:8px 0}.empty{padding:25px 10px;color:#9bad9f;text-align:center;font-size:13px}.section{border-top:1px solid #2c382f;padding-top:13px;margin-top:15px}.notice{background:#202c23;border-left:2px solid #b3f2b8;padding:10px;color:#b9cabe;font-size:12px}a{color:#b3f2b8}.small{font-size:11px;color:#829b8a}details summary{cursor:pointer;font-size:13px;color:#a6bead}
 
  #connector{position:fixed;inset:0;width:100vw;height:100vh;z-index:2147483601;pointer-events:none;overflow:visible;display:none}#connector.visible{display:block}#connector path{fill:none;stroke:#bc693a;stroke-width:2.2;filter:drop-shadow(0 2px 3px #bc693a30)}#connector circle{fill:#fff9ee;stroke:#bc693a;stroke-width:2}
  .leader-head{display:flex;gap:7px;align-items:center;margin-bottom:14px}.leader-head>div{flex:1}.leader-head .eyebrow{font-size:16px;font-weight:650;color:#b3f2b8;letter-spacing:0}.leader-caption{font-size:11px;color:#8fa395;margin-top:3px}.icon-button{background:transparent;color:#b6cbbb;border:1px solid #3b5041;border-radius:8px;width:31px;height:30px;font-size:18px}.rank-list{display:flex;flex-direction:column;gap:3px}.rank-row{width:100%;display:flex;align-items:center;text-align:left;gap:8px;background:none;border:1.5px solid transparent;border-radius:9px;padding:9px 6px;color:inherit;min-height:55px}.rank-row:hover{background:#203127}.rank-row.selected{border-color:#bc693a;background:#bc693a18}.rank-number{width:17px;text-align:center;color:#95a898;font:13px Consolas,monospace}.rank-icon{font-size:14px}.rank-copy{flex:1;min-width:0}.rank-name{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:12px;font-weight:650}.rank-excerpt{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#8da294;font-size:11px;margin-top:2px}.rank-values{text-align:right;white-space:nowrap}.rank-views{display:block;color:#89a08f;font:10px Consolas,monospace}.rank-rate{display:block;font:700 13px Consolas,monospace;color:#70bf8d;margin-top:3px}.rank-rate[data-level=hot]{color:#f29069}.rank-rate[data-level=warm]{color:#e9b57a}.rank-tip{color:#8b9f92;font-size:11px;margin:13px 0 0}#topN{width:100px}.filter-note{border:1px solid #3c7853;background:#244a32;color:#b3f2b8;border-radius:9px;font-size:12px;padding:9px;margin-bottom:10px}
- :host([data-theme=light]){color:#493d33} :host([data-theme=light]) #panel{background:#fffcf5;border-color:#e2d9cb;box-shadow:0 14px 42px #493b3324} :host([data-theme=light]) header{border-color:#e8dfd3} :host([data-theme=light]) header small{color:#b36b40} :host([data-theme=light]) header p,:host([data-theme=light]) .leader-caption,:host([data-theme=light]) .hint,:host([data-theme=light]) .rank-tip{color:#8e7d6d} :host([data-theme=light]) nav button{color:#937e6c} :host([data-theme=light]) nav button.active{color:#a35428;background:#f4e6d8} :host([data-theme=light]) .leader-head .eyebrow{color:#6a5140} :host([data-theme=light]) .icon-button{color:#a75e31;border-color:#e7d5c5} :host([data-theme=light]) .rank-row:hover{background:#f6eee3} :host([data-theme=light]) .rank-row.selected{background:#f3e6d9} :host([data-theme=light]) .rank-number,:host([data-theme=light]) .rank-excerpt,:host([data-theme=light]) .rank-views{color:#958272} :host([data-theme=light]) .rank-rate[data-level=hot]{color:#bc4926} :host([data-theme=light]) .rank-rate[data-level=warm]{color:#b77134} :host([data-theme=light]) .rank-rate{color:#32885b} :host([data-theme=light]) .section,:host([data-theme=light]) .card,:host([data-theme=light]) footer{border-color:#e6dccf} :host([data-theme=light]) input,:host([data-theme=light]) select{background:#fffdfa;color:#574434;border-color:#dfd0bf} :host([data-theme=light]) label,:host([data-theme=light]) .checks,:host([data-theme=light]) .eyebrow,:host([data-theme=light]) details summary{color:#80664f} :host([data-theme=light]) .secondary{background:#f5eadd;border-color:#e5cfb9;color:#965a2f} :host([data-theme=light]) .query{background:#f4eee3;color:#7e6b57} :host([data-theme=light]) .big,:host([data-theme=light]) a{color:#9c5930} :host([data-theme=light]) .primary,:host([data-theme=light]) #launch{background:#b66b3d;color:white} :host([data-theme=light]) .filter-note{background:#e2f4e9;color:#227957;border-color:#b6dfc8} :host([data-theme=light]) .close{color:#9c6a48}
+ :host([data-theme=light]){color:#493d33} :host([data-theme=light]) #panel{background:#fffcf5;border-color:#e2d9cb;box-shadow:0 14px 42px #493b3324} :host([data-theme=light]) header{border-color:#e8dfd3} :host([data-theme=light]) header small{color:#b36b40} :host([data-theme=light]) header p,:host([data-theme=light]) .leader-caption,:host([data-theme=light]) .hint,:host([data-theme=light]) .rank-tip{color:#8e7d6d} :host([data-theme=light]) nav button{color:#937e6c} :host([data-theme=light]) nav button.active{color:#a35428;background:#f4e6d8} :host([data-theme=light]) .leader-head .eyebrow{color:#6a5140} :host([data-theme=light]) .icon-button{color:#a75e31;border-color:#e7d5c5} :host([data-theme=light]) .rank-row:hover{background:#f6eee3} :host([data-theme=light]) .rank-row.selected{background:#f3e6d9} :host([data-theme=light]) .rank-number,:host([data-theme=light]) .rank-excerpt,:host([data-theme=light]) .rank-views{color:#958272} :host([data-theme=light]) .rank-rate[data-level=hot]{color:#bc4926} :host([data-theme=light]) .rank-rate[data-level=warm]{color:#b77134} :host([data-theme=light]) .rank-rate{color:#32885b} :host([data-theme=light]) .section,:host([data-theme=light]) .card,:host([data-theme=light]) footer{border-color:#e6dccf} :host([data-theme=light]) input,:host([data-theme=light]) select{background:#fffdfa;color:#574434;border-color:#dfd0bf} :host([data-theme=light]) label,:host([data-theme=light]) .checks,:host([data-theme=light]) .eyebrow,:host([data-theme=light]) details summary{color:#80664f} :host([data-theme=light]) .secondary{background:#f5eadd;border-color:#e5cfb9;color:#965a2f} :host([data-theme=light]) .query{background:#f4eee3;color:#7e6b57} :host([data-theme=light]) .big,:host([data-theme=light]) a{color:#9c5930} :host([data-theme=light]) .primary{background:#b66b3d;color:white} :host([data-theme=light]) .filter-note{background:#e2f4e9;color:#227957;border-color:#b6dfc8}
 
 
- #panel{width:410px}main{overscroll-behavior:contain} :host{color-scheme:dark}:host([data-theme=light]){color-scheme:light} .rank-row{min-height:40px;padding:8px 5px;gap:6px}.rank-author{width:66px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:650}.rank-preview{flex:1;min-width:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#8da294}.rank-row>.rank-views{font-size:10px;white-space:nowrap}.rank-row>.rank-rate{font-size:12px;margin:0;white-space:nowrap}.scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin:13px 0}.scope-grid label{display:flex;align-items:center;gap:5px}.column-choice{display:flex;align-items:center;gap:9px;padding:7px;border:1px solid #3b5041;border-radius:8px;margin:5px 0;cursor:grab}.column-choice label{display:flex;align-items:center;gap:6px;flex:1;font-size:12px}.column-choice.dragging{opacity:.4}#metricsTip{display:none;position:fixed;z-index:2147483602;width:260px;background:#17241b;color:#e2eee5;border:1px solid #425847;border-radius:12px;box-shadow:0 10px 40px #0005;padding:15px;pointer-events:none}#metricsTip[data-open]{display:block}.tip-title{font-weight:650;font-size:13px;margin-bottom:9px}.tip-grid{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px}.tip-grid strong{font:13px Consolas,monospace;color:#b3f2b8}#metricsTip p{font-size:10px;color:#8da294;margin:10px 0 0}:host([data-theme=light]) #metricsTip{background:#fffcf5;color:#574434;border-color:#e3d4c3}:host([data-theme=light]) .tip-grid strong{color:#a45e30}:host([data-theme=light]) .column-choice{border-color:#e6d6c4}:host([data-theme=light]) .rank-preview{color:#958272}
+ #panel{width:410px}main{overscroll-behavior:contain} :host{color-scheme:dark}:host([data-theme=light]){color-scheme:light} .rank-row{min-height:40px;padding:8px 5px;gap:6px}.rank-author{width:66px;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;font-weight:650}.rank-preview{flex:1;min-width:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:11px;color:#8da294}.rank-row>.rank-views{font-size:10px;white-space:nowrap}.rank-row>.rank-rate{font-size:12px;margin:0;white-space:nowrap}.scope-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;margin:13px 0}.scope-grid label{display:flex;align-items:center;gap:5px}.column-choice{display:flex;align-items:center;gap:9px;padding:7px;border:1px solid #3b5041;border-radius:8px;margin:5px 0;cursor:grab}.column-choice label{display:flex;align-items:center;gap:6px;flex:1;font-size:12px}.column-choice.dragging{opacity:.4}#metricsTip{display:none;position:fixed;z-index:2147483602;width:260px;background:#17241b;color:#e2eee5;border:1px solid #425847;border-radius:12px;box-shadow:0 10px 40px #0005;padding:15px;pointer-events:none}#metricsTip[data-open]{display:block}.tip-title{font-weight:650;font-size:13px;margin-bottom:9px}.tip-grid{display:grid;grid-template-columns:1fr auto;gap:5px;font-size:12px}.tip-grid strong{font:13px Consolas,monospace;color:#b3f2b8}#metricsTip p{font-size:10px;color:#8da294;margin:10px 0 0}:host([data-theme=light]) #metricsTip{background:#fffcf5;color:#574434;border-color:#e3d4c3}:host([data-theme=light]) .tip-grid strong{color:#a45e30}:host([data-theme=light]) .column-choice{border-color:#e6d6c4}:host([data-theme=light]) .rank-preview{color:#958272}.header-tool{float:right;background:none;border:0;color:#a7b4ab;font-size:22px;cursor:pointer;padding:0 7px;line-height:32px}:host([data-theme=light]) .header-tool{color:#9c6a48}#resize{position:absolute;right:3px;bottom:2px;width:22px;height:22px;color:#8caa96;text-align:center;cursor:nwse-resize;touch-action:none;user-select:none}#panel header{user-select:none}
 
 
- #launch{cursor:grab;user-select:none}#launch:active{cursor:grabbing}#launch.docked{padding:7px;width:30px;height:42px;border-radius:0 12px 12px 0;font-size:16px;opacity:.72}#launch.docked:hover{opacity:1}.header-tool{float:right;background:none;border:0;color:#a7b4ab;font-size:22px;cursor:pointer;padding:0 7px;line-height:32px}:host([data-theme=light]) .header-tool{color:#9c6a48}#resize{position:absolute;right:3px;bottom:2px;width:22px;height:22px;color:#8caa96;text-align:center;cursor:nwse-resize;touch-action:none;user-select:none}#panel[data-collapsed=true] header{padding:9px 13px;border:0}#panel[data-collapsed=true] h1{font-size:17px;line-height:32px;margin:0}#panel[data-collapsed=true] header small,#panel[data-collapsed=true] header p,#panel[data-collapsed=true] nav,#panel[data-collapsed=true] main,#panel[data-collapsed=true] footer,#panel[data-collapsed=true] #resize{display:none}#panel header{user-select:none}
+ .filter-tools{display:flex;gap:10px;margin:8px 0 14px}.filter-tools label{min-width:0;flex:1;font-size:11px;color:#8da294}.filter-tools select{font-size:12px;padding:7px;margin-top:4px}.theme-label{display:inline-flex;align-items:center;gap:5px;margin-right:12px}.theme-label select{font-size:11px;padding:3px;width:82px}.actions{flex-wrap:wrap}:host([data-theme=light]) .filter-tools label{color:#8e7d6d}.compact-choice{display:inline-flex;align-items:center;gap:4px;font-size:11px}.compact-choice input{width:14px;height:14px}footer>div{margin-top:4px}.why-unused{display:none}
 
 
- .filter-tools{display:flex;gap:10px;margin:8px 0 14px}.filter-tools label{min-width:0;flex:1;font-size:11px;color:#8da294}.filter-tools select{font-size:12px;padding:7px;margin-top:4px}.theme-label{display:inline-flex;align-items:center;gap:5px;margin-right:12px}.theme-label select{font-size:11px;padding:3px;width:82px}.actions{flex-wrap:wrap}:host([data-theme=light]) .filter-tools label{color:#8e7d6d}.compact-choice{display:inline-flex;align-items:center;gap:4px;font-size:11px}.compact-choice input{width:14px;height:14px}footer>div{margin-top:4px}#launch{z-index:2147483603;width:36px;height:36px;display:grid;place-items:center;padding:0;border-radius:12px;border:1px solid #405d4b;background:#192a21;color:#b0d8bc;box-shadow:0 3px 14px #0003;cursor:pointer}#launch:active{cursor:grabbing}#launch:hover{background:#22392b;border-color:#6f9b7b}#launch[aria-expanded=true]{border-color:#9cd0a6;background:#24402d}:host([data-theme=light]) #launch{background:#fffcf5;color:#92623e;border-color:#ded3c2;box-shadow:0 3px 14px #493b3320}:host([data-theme=light]) #launch:hover,:host([data-theme=light]) #launch[aria-expanded=true]{background:#f3e8d8;border-color:#ba966e}#launch.docked{width:27px;height:34px;padding:0;border-radius:0 10px 10px 0;opacity:.8}#launch.docked[data-edge=right]{border-radius:10px 0 0 10px}#launch.docked svg{transform:scale(.85)}#launch.docked:hover{opacity:1}.why-unused{display:none}
+ /* Quiet, compact workbench: the list comes first, settings stay on demand. */
+ #panel{border-radius:16px}#panel header{padding:10px 13px;border-bottom:0}#panel h1{font-size:14px;line-height:28px;letter-spacing:0;margin:0;font-weight:650}
+ .header-tool{font-size:19px;line-height:28px;padding:0 6px}
+ nav{padding:0 10px 9px;gap:4px;border-bottom:1px solid #2c382f}nav button{font-size:12px;padding:5px 3px;border-radius:7px}
+ main{padding:12px 10px}.leader-head{margin-bottom:9px;gap:5px}.leader-head .eyebrow{font-size:13px}.leader-caption{font-size:10px;margin-top:2px}.icon-button{border-color:transparent!important;width:27px;height:27px;font-size:17px;flex-shrink:0}.icon-button:hover{background:#8c8c8c16}
+ .rank-list{gap:2px}.rank-row{min-height:34px;padding:6px 4px;gap:5px;border-radius:7px}.rank-number{width:16px;flex:0 0 16px;font-size:11px}.rank-icon{font-size:12px;flex-shrink:0}.rank-author{width:46px;font-size:10px}.rank-preview{font-size:12px;min-width:0}.rank-row>.rank-views{font-size:10px;flex-shrink:0}.rank-row>.rank-rate{font-size:12px;font-variant-numeric:tabular-nums;flex-shrink:0}.rank-tip{font-size:10px;margin:10px 4px 0}
+ footer{padding:8px 12px;font-size:10px}.section{margin-top:12px;padding-top:10px}.section>summary{font-size:11px}.section .row{font-size:12px}.section .row select{width:126px}.filter-tools{margin-top:12px}
+ :host([data-theme=light]) nav{border-color:#e8dfd3}
+
+ #dockTab{position:fixed;right:0;z-index:2147483603;writing-mode:vertical-rl;padding:12px 7px;border:1px solid #425447;border-radius:10px;background:#17241b;color:#b3f2b8;font-size:12px;cursor:grab;touch-action:none;user-select:none;box-shadow:0 3px 12px #0002}#dockTab:active{cursor:grabbing}#dockTab[data-edge=right]{border-radius:10px 0 0 10px}#dockTab[hidden]{display:none}#dockTab[data-edge=left]{right:auto;left:0;border-radius:0 10px 10px 0}#panel[data-dock=right]{border-radius:16px 0 0 16px}#panel[data-dock=left]{border-radius:0 16px 16px 0}:host([data-theme=light]) #dockTab{background:#fffcf5;color:#92623e;border-color:#ded3c2}
+ #panel header{display:flex;align-items:center;gap:8px}#panel h1{order:0;flex:1;min-width:0;color:inherit}#fold{order:1;float:none;flex:0 0 auto}
+ .reset-layout{margin-left:auto;background:none;border:0;color:inherit;font-size:10px;cursor:pointer;opacity:.7}footer{display:flex;align-items:center;gap:5px;flex-wrap:wrap}.theme-label{margin-right:3px}
 
  `;
  function mount(){
-  const style=document.createElement('style');style.textContent='.why-inline-header{display:inline-flex!important;flex-direction:row!important;align-items:center!important;flex-wrap:nowrap!important;min-width:0;max-width:100%;vertical-align:middle;gap:0}.why-inline-header>:not(.why-follower):not(.why-heat){min-width:0;flex-shrink:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.why-inline-header>.why-follower,.why-inline-header>.why-heat{align-self:center!important;margin-block:0!important;flex-shrink:0!important}.why-follower[data-compact=true]{font-size:10px!important;padding:1px 5px!important;margin-inline:5px!important;border-radius:999px!important}.why-heat[data-compact=true]{font-size:10px!important;padding:2px 6px!important;margin-inline:3px!important}.why-follower-row{display:inline-flex!important;flex-direction:row!important;align-items:center!important;flex-wrap:nowrap!important;max-width:100%;vertical-align:middle}.why-follower-row>.why-follower{align-self:center!important;margin-block:0!important}.why-follower{display:inline-flex;vertical-align:middle;margin:3px 6px;padding:2px 6px;font:11px/1.5 sans-serif;color:#278a48;flex:0 0 auto!important;align-self:flex-start!important;width:max-content!important;max-width:150px;background:rgba(101,184,122,.12);border:1px solid rgba(101,184,122,.25);border-radius:5px;white-space:nowrap}.why-heat{display:inline-flex;align-items:center;white-space:nowrap;gap:3px;font:11px/1.5 sans-serif;color:#2b9f69;border-radius:7px;padding:3px 7px;margin:0 4px;background:rgba(51,170,110,.1)}.why-heat[data-level=hot]{color:#ef665c;background:rgba(239,102,92,.12)}.why-heat[data-level=warm]{color:#ce941e;background:rgba(206,148,30,.12)}.why-follower[hidden]{display:none!important}article.why-hidden{display:none!important}article.why-target{outline:2px solid #bc693a!important;outline-offset:-2px;border-radius:12px!important;box-shadow:0 0 0 4px #bc693a10}.why-heat{font-weight:700!important;border-radius:999px!important;padding:3px 9px!important;margin-inline-start:8px!important}.why-heat[data-level=hot]{color:#b64232!important;background:#f7d7d2!important}.why-heat[data-level=warm]{color:#a45e30!important;background:#f5dfca!important}';document.documentElement.append(style);
+  const style=document.createElement('style');style.textContent='.why-inline-header{display:inline-flex!important;flex-direction:row!important;align-items:center!important;flex-wrap:nowrap!important;min-width:0;max-width:100%;vertical-align:middle;gap:0}.why-inline-header>:not(.why-follower):not(.why-heat){min-width:0;flex-shrink:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.why-inline-header>.why-follower,.why-inline-header>.why-heat{align-self:center!important;margin-block:0!important;flex-shrink:0!important}.why-follower[data-compact=true]{font-size:10px!important;padding:1px 5px!important;margin-inline:5px!important;border-radius:999px!important}.why-heat[data-compact=true]{font-size:10px!important;padding:2px 6px!important;margin-inline:3px!important}.why-follower-row{display:inline-flex!important;flex-direction:row!important;align-items:center!important;flex-wrap:nowrap!important;max-width:100%;vertical-align:middle}.why-follower-row>.why-follower{align-self:center!important;margin-block:0!important}.why-follower{display:inline-flex;vertical-align:middle;margin:3px 6px;padding:2px 6px;font:11px/1.5 sans-serif;color:#278a48;flex:0 0 auto!important;align-self:flex-start!important;width:max-content!important;max-width:150px;background:rgba(101,184,122,.12);border:1px solid rgba(101,184,122,.25);border-radius:5px;white-space:nowrap}.why-heat{display:inline-flex;align-items:center;white-space:nowrap;gap:3px;font:11px/1.5 sans-serif;color:#2b9f69;border-radius:7px;padding:3px 7px;margin:0 4px;background:rgba(51,170,110,.1)}.why-heat[data-level=hot]{color:#ef665c;background:rgba(239,102,92,.12)}.why-heat[data-level=warm]{color:#ce941e;background:rgba(206,148,30,.12)}.why-follower[hidden]{display:none!important}article.why-hidden{display:none!important}article.why-target{outline:2px solid #bc693a!important;outline-offset:-2px;border-radius:12px!important;box-shadow:0 0 0 4px #bc693a10}.why-heat{font-weight:700!important;border-radius:999px!important;padding:3px 9px!important;margin-inline-start:8px!important}.why-heat[data-level=hot]{color:#b64232!important;background:#f7d7d2!important}.why-heat[data-level=warm]{color:#a45e30!important;background:#f5dfca!important}';style.textContent+='.why-heat-header{position:relative!important;padding-inline-end:96px!important;box-sizing:border-box!important;min-width:0!important;flex:1 1 auto!important}.why-heat-header>.why-heat[data-placement=right]{position:absolute!important;inset-inline-end:0!important;top:3px!important;margin:0!important;max-width:92px!important;font-size:11px!important;line-height:18px!important;padding:1px 7px!important;overflow:hidden;text-overflow:ellipsis;z-index:1}.why-heat-header>.why-heat[data-placement=right]:focus-visible{outline:2px solid #bc693a;outline-offset:2px}.why-heat[data-placement=right][data-level=normal]{color:#28784b;background:#e1f1e6}.why-heat[data-placement=right][data-level=warm]{color:#9b571f!important;background:#faead8!important}.why-heat[data-placement=right][data-level=hot]{color:#b13e32!important;background:#f9e2de!important}';style.textContent+='.why-heat-grow{flex-grow:1!important;min-width:0!important}.why-heat-header{width:100%!important;align-self:stretch!important}.why-follower-time-row{display:inline-flex!important;flex-direction:row!important;align-items:center!important;flex-shrink:0!important;white-space:nowrap}.why-follower[data-placement=after-time]{align-self:center!important;margin-block:0!important;flex-shrink:0!important}';document.documentElement.append(style);
   host=document.createElement('div');host.id='why-x-helper';shadow=host.attachShadow({mode:'open'});
-  globalThis.WHYDOM.set(shadow,`<style>${styles}</style><button id="launch" aria-label="打开 X 浏览助手" aria-controls="panel" aria-expanded="false"><svg aria-hidden="true" style="width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;pointer-events:none"><circle cx="10" cy="10" r="7.5"/><path d="M14.5 5.5 12 12 5.5 14.5 8 8 14.5 5.5Z"/></svg></button><svg id="connector" aria-hidden="true"><path id="connectorPath"/><circle id="connectorStart" r="5"/><circle id="connectorEnd" r="5"/></svg><section id="panel" hidden aria-label="X 浏览助手"><header><button id="fold" class="header-tool" aria-label="折叠浏览助手" title="折叠 / 展开">−</button><button id="resetLayout" class="header-tool" aria-label="重置面板布局" title="重置位置和大小">↺</button><button class="close" aria-label="关闭面板">×</button><small>WHY / X HELPER</small><h1>X 浏览助手</h1><p>看账号 · 看热度 · 找好内容</p></header><nav><button data-tab="heat">帖子热度</button><button data-tab="accounts">账号规模</button><button data-tab="search">固定搜索</button></nav><main></main><footer><label class="theme-label">外观 <select id="themeChoice"><option value="light">暖白</option><option value="dark">暗绿</option><option value="auto">跟随 X</option></select></label><label class="compact-choice"><input id="compactLabels" type="checkbox">紧凑标签</label><div>个人免费版 · 无订阅 · 无自动发帖</div></footer><div id="resize" tabindex="0" role="button" aria-label="调整窗口大小" title="拖动调整大小；方向键也可调整">◢</div></section>`);
-  document.body.append(host);shadow.getElementById('launch').onclick=()=>{if(Date.now()<suppressLaunchClickUntil){suppressLaunchClickUntil=0;return;}toggle();};shadow.querySelector('.close').onclick=()=>toggle(false);
+  globalThis.WHYDOM.set(shadow,`<style>${styles}</style><button id="dockTab" hidden aria-label="展开 X 浏览助手" aria-controls="panel" aria-expanded="false" title="点击展开；拖动移动，靠近左右边缘吸附">X 助手</button><svg id="connector" aria-hidden="true"><path id="connectorPath"/><circle id="connectorStart" r="5"/><circle id="connectorEnd" r="5"/></svg><section id="panel" hidden aria-label="X 浏览助手"><header><button id="fold" class="header-tool" aria-label="收起助手" title="收起助手">−</button><h1>X 浏览助手</h1></header><nav><button data-tab="heat">帖子热度</button><button data-tab="accounts">账号规模</button><button data-tab="search">固定搜索</button></nav><main></main><footer><label class="theme-label">外观 <select id="themeChoice"><option value="light">暖白</option><option value="dark">暗绿</option><option value="auto">跟随 X</option></select></label><label class="compact-choice"><input id="compactLabels" type="checkbox">紧凑标签</label><button id="resetLayout" class="reset-layout" aria-label="重置面板布局" title="恢复默认位置和大小">重置布局</button></footer><div id="resize" tabindex="0" role="button" aria-label="调整窗口大小" title="拖动调整大小；方向键也可调整">◢</div></section>`);
+  document.body.append(host);
   shadow.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;editId=null;searchDraft=null;clearSelection();render();});
-  window.addEventListener('scroll',queueConnector,true);window.addEventListener('resize',()=>{positionPanel();positionLauncher();queueConnector();});window.addEventListener('scroll',hideMetrics,true);
+  if(typeof ResizeObserver==='function')new ResizeObserver(()=>positionPanel()).observe(document.documentElement);
+  window.addEventListener('scroll',queueConnector,true);window.addEventListener('resize',()=>{positionPanel();queueConnector();});window.addEventListener('scroll',hideMetrics,true);
   shadow.addEventListener('scroll',queueConnector,true);
   document.addEventListener('keydown',e=>{if(e.key==='Escape'&&settings.panel){clearSelection();toggle(false);}});
   shadow.getElementById('themeChoice').value=settings.theme||'light';shadow.getElementById('themeChoice').onchange=e=>{settings.theme=e.target.value;applyTheme();saveSettings();};
   shadow.getElementById('compactLabels').checked=settings.compactLabels!==false;shadow.getElementById('compactLabels').onchange=e=>{settings.compactLabels=e.target.checked;saveSettings();};
+  installTabDrag();
   applyTheme();installPanelDrag();installLayoutControls();render();
  }
- function toggle(value){hideMetrics();settings.panel=value??!settings.panel;if(settings.panel)settings.collapsed=false;if(!settings.panel)clearSelection();saveSettings();render();}
+ function toggle(value){
+  hideMetrics();const expand=value??!settings.panel;
+  if(!expand&&settings.panel){const r=shadow.getElementById('panel').getBoundingClientRect();if(!settings.tabPosition)settings.tabDock=r.left+r.width/2<innerWidth/2?'left':'right';settings.position={x:r.left,y:r.top};clearSelection();}
+  settings.panel=!!expand;saveSettings();render();
+ }
 
  function articleById(id){return [...document.querySelectorAll('article[data-testid="tweet"]')].find(a=>tweetInfo(a)?.id===id);}
  function clearSelection(){
@@ -326,14 +387,15 @@
  function render(){
   if(!shadow)return;
   const previousFocus=shadow.activeElement;
-  shadow.getElementById('panel').hidden=!settings.panel;positionPanel();positionLauncher();
+  shadow.getElementById('panel').hidden=!settings.panel;positionPanel();
   shadow.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
   const main=shadow.querySelector('main');const previousScroll=main.scrollTop,optionsOpen=main.querySelector('#heatOptions')?.open;
   if(tab==='search'&&main.querySelector('#editor')?.open){searchDraft={editId,values:{},checks:{}};for(const id of ['searchName','searchGroup','searchQuery','days','likes','lang','from'])searchDraft.values[id]=main.querySelector('#'+id).value;for(const id of ['follows','original'])searchDraft.checks[id]=main.querySelector('#'+id).checked;}
   if(tab==='heat'){
    const unique=[...new Map(visible.map(t=>[t.id,t])).values()];
    const ranked=unique.map(t=>({t,m:C.metrics(t)})).filter(x=>x.m?.rate!=null&&(!settings.maxAge||Date.now()-x.t.created<=settings.maxAge*3600000)).sort((a,b)=>b.m.rate-a.m.rate);
-   globalThis.WHYDOM.set(main,`<div class="leader-head"><div><span class="eyebrow">本页热点</span><div class="leader-caption">${ranked.length} 条已加载 · 按平均热度排序</div></div><button class="icon-button" id="goBack" aria-label="返回定位前的位置" title="返回定位前的位置">↶</button><button class="icon-button" id="openHeatOptions" aria-label="热度榜设置" title="热度榜设置">⚙</button></div>${settings.onlyHot&&settings.scopes.includes(pageScope())?'<div class="filter-note">仅看热帖已开启 · 点击设置可调整</div>':''}<div class="filter-tools"><label>发布时间<select id="maxAge">${[[0,'不限'],[6,'最近 6 小时'],[24,'最近 24 小时'],[72,'最近 3 天'],[168,'最近 7 天']].map(([n,label])=>`<option value="${n}" ${Number(settings.maxAge)===n?'selected':''}>${label}</option>`).join('')}</select></label><label>热度预设<select id="heatPreset"><option value="custom">自定义</option><option value="new">找新热点</option><option value="viral">回看爆帖</option><option value="following">关注流轻筛选</option><option value="all">全部帖子</option></select></label></div><div class="rank-list">${ranked.slice(0,settings.topN||10).map(({t,m},i)=>rankRow(t,m,i)).join('')||'<div class="empty">刷新 X 后继续滚动。<br>页面加载指标后，这里会出现排行榜。</div>'}</div><p class="rank-tip" id="jumpStatus">点一条排名，连线找到对应帖子。</p><details id="heatOptions" class="section"><summary>热度榜设置</summary><div class="checks"><label><input id="onlyHot" type="checkbox" ${settings.onlyHot?'checked':''}>仅看热帖</label></div><p class="hint">流速或累计浏览量，满足任意一项就保留。</p><div class="scope-grid">${Object.entries({home:'首页 / 推荐',list:'列表',profile:'个人主页',status:'帖子详情'}).map(([key,name])=>`<label><input type="checkbox" data-scope="${key}" ${settings.scopes.includes(key)?'checked':''}>${name}</label>`).join('')}</div><div class="row"><label for="topN">显示前几名</label><select id="topN">${[5,10,20,50].map(n=>`<option ${n===(settings.topN||10)?'selected':''}>${n}</option>`).join('')}</select></div><div class="checks"><label><input id="heatToggle" type="checkbox" ${settings.heat?'checked':''}>显示帖子热度标签</label></div><div class="row"><label for="minRate">最低浏览量 / 小时</label><input id="minRate" type="number" min="0" value="${settings.minRate}"></div><div class="row"><label for="minViews">最低累计浏览量</label><input id="minViews" type="number" min="0" value="${settings.minViews}"></div><div class="row"><label for="longRate">长文独立最低流速</label><input id="longRate" type="number" min="0" value="${settings.longRate}"></div><p class="hint">600 字以上算长文；设为 0 时沿用普通阈值。</p><button id="resetFilter" class="secondary">取消全部热度筛选</button><div class="pair"><div><label class="field" for="trending">🚀 上升阈值 /h</label><input id="trending" type="number" min="1" value="${settings.trending}"></div><div><label class="field" for="viral">🔥 爆款阈值 /h</label><input id="viral" type="number" min="1" value="${settings.viral}"></div></div><p class="hint">拖动下方条目调整列顺序；取消勾选可隐藏。</p><div class="column-editor">${orderedColumns().map(key=>`<div class="column-choice" draggable="true" data-column="${key}"><span>⠿</span><label><input type="checkbox" data-column-visible="${key}" ${settings.columns.includes(key)?'checked':''}>${columnNames[key]}</label><button class="icon-button" data-column-up="${key}" aria-label="上移${columnNames[key]}">↑</button></div>`).join('')}</div><p class="hint">平均热度 = 累计浏览量 ÷ 发布至今小时数，不是最近一小时新增量。</p></details>`);
+   globalThis.WHYDOM.set(main,`<div class="leader-head"><div><span class="eyebrow">🔥 本页热点</span><div class="leader-caption">${ranked.length} 条已加载 · 按平均热度排序</div></div><button class="icon-button" id="goBack" aria-label="返回定位前的位置" title="返回定位前的位置">↶</button><button class="icon-button" id="openHeatOptions" aria-label="热度榜设置" title="热度榜设置">⚙</button></div>${settings.onlyHot&&settings.scopes.includes(pageScope())?'<div class="filter-note">仅看热帖已开启 · 点击设置可调整</div>':''}<div class="rank-list">${ranked.slice(0,settings.topN||10).map(({t,m},i)=>rankRow(t,m,i)).join('')||'<div class="empty">刷新 X 后继续滚动。<br>页面加载指标后，这里会出现排行榜。</div>'}</div><p class="rank-tip" id="jumpStatus">点一条排名，连线找到对应帖子。</p><details id="heatOptions" class="section"><summary>热度榜设置</summary><div class="filter-tools"><label>发布时间<select id="maxAge">${[[0,'不限'],[6,'最近 6 小时'],[24,'最近 24 小时'],[72,'最近 3 天'],[168,'最近 7 天']].map(([n,label])=>`<option value="${n}" ${Number(settings.maxAge)===n?'selected':''}>${label}</option>`).join('')}</select></label><label>热度预设<select id="heatPreset"><option value="custom">自定义</option><option value="new">找新热点</option><option value="viral">回看爆帖</option><option value="following">关注流轻筛选</option><option value="all">全部帖子</option></select></label></div><div class="row"><label for="heatPlacement">热度标签位置</label><select id="heatPlacement"><option value="after-time" ${settings.heatPlacement==='after-time'?'selected':''}>粉丝数后面</option><option value="right" ${settings.heatPlacement==='right'?'selected':''}>帖子右侧</option><option value="name" ${settings.heatPlacement==='name'?'selected':''}>姓名旁</option></select></div><div class="checks"><label><input id="onlyHot" type="checkbox" ${settings.onlyHot?'checked':''}>仅看热帖</label></div><p class="hint">流速或累计浏览量，满足任意一项就保留。</p><div class="scope-grid">${Object.entries({home:'首页 / 推荐',list:'列表',profile:'个人主页',status:'帖子详情'}).map(([key,name])=>`<label><input type="checkbox" data-scope="${key}" ${settings.scopes.includes(key)?'checked':''}>${name}</label>`).join('')}</div><div class="row"><label for="topN">显示前几名</label><select id="topN">${[5,10,20,50].map(n=>`<option ${n===(settings.topN||10)?'selected':''}>${n}</option>`).join('')}</select></div><div class="checks"><label><input id="heatToggle" type="checkbox" ${settings.heat?'checked':''}>显示帖子热度标签</label></div><div class="row"><label for="minRate">最低浏览量 / 小时</label><input id="minRate" type="number" min="0" value="${settings.minRate}"></div><div class="row"><label for="minViews">最低累计浏览量</label><input id="minViews" type="number" min="0" value="${settings.minViews}"></div><div class="row"><label for="longRate">长文独立最低流速</label><input id="longRate" type="number" min="0" value="${settings.longRate}"></div><p class="hint">600 字以上算长文；设为 0 时沿用普通阈值。</p><button id="resetFilter" class="secondary">取消全部热度筛选</button><div class="pair"><div><label class="field" for="trending">🚀 上升阈值 /h</label><input id="trending" type="number" min="1" value="${settings.trending}"></div><div><label class="field" for="viral">🔥 爆款阈值 /h</label><input id="viral" type="number" min="1" value="${settings.viral}"></div></div><p class="hint">拖动下方条目调整列顺序；取消勾选可隐藏。</p><div class="column-editor">${orderedColumns().map(key=>`<div class="column-choice" draggable="true" data-column="${key}"><span>⠿</span><label><input type="checkbox" data-column-visible="${key}" ${settings.columns.includes(key)?'checked':''}>${columnNames[key]}</label><button class="icon-button" data-column-up="${key}" aria-label="上移${columnNames[key]}">↑</button></div>`).join('')}</div><p class="hint">平均热度 = 累计浏览量 ÷ 发布至今小时数，不是最近一小时新增量。</p></details>`);
+   main.querySelector('#heatPlacement').onchange=e=>{settings.heatPlacement=e.target.value;saveSettings();};
    main.querySelector('#heatToggle').onchange=e=>{settings.heat=e.target.checked;saveSettings();};
    ['minRate','minViews','longRate'].forEach(k=>main.querySelector('#'+k).onchange=e=>{settings[k]=Math.max(0,Number(e.target.value)||0);settings.heatPreset='custom';saveSettings();});
    main.querySelector('#resetFilter').onclick=()=>{settings.onlyHot=false;settings.minRate=settings.minViews=settings.longRate=0;settings.heatPreset='custom';saveSettings();render();};
@@ -352,10 +414,11 @@
    queueConnector();
   }else if(tab==='accounts'){
    const list=[...accounts.values()].filter(u=>Date.now()-u.at<30*60000).sort((a,b)=>b.followers-a.followers);
-   globalThis.WHYDOM.set(main,`<div class="eyebrow">浏览时读取到的账号</div><div class="big">${list.length}<span style="font-size:13px;color:#93a499"> 个账号</span></div><div class="checks"><label><input id="followerToggle" type="checkbox" ${settings.followers?'checked':''}>在名字附近显示粉丝数</label></div><p class="hint">读取 X 已加载数据，缓存最多30 分钟。列表页缺失时，悬停账号或打开主页可补充数据。</p><input id="accountSearch" placeholder="搜索昵称或 @账号" aria-label="搜索已读取的账号"><div id="accountList"></div><button id="clearAccounts" class="secondary">清除账号缓存</button>`);
+   globalThis.WHYDOM.set(main,`<div class="eyebrow">浏览时读取到的账号</div><div class="big">${list.length}<span style="font-size:13px;color:#93a499"> 个账号</span></div><div class="checks"><label><input id="followerToggle" type="checkbox" ${settings.followers?'checked':''}>在发布时间后显示粉丝数</label></div><div class="checks" style="margin-top:10px"><label><input id="profileRows" type="checkbox" ${readingOptions.bios?'checked':''}>显示额外作者简介与关注按钮</label></div><p class="hint">读取 X 已加载数据，缓存最多30 分钟。列表页缺失时，悬停账号或打开主页可补充数据。</p><input id="accountSearch" placeholder="搜索昵称或 @账号" aria-label="搜索已读取的账号"><div id="accountList"></div><button id="clearAccounts" class="secondary">清除账号缓存</button>`);
    function draw(q=''){
     globalThis.WHYDOM.set(main.querySelector('#accountList'),list.filter(u=>(u.handle+' '+u.name).toLowerCase().includes(q.toLowerCase())).slice(0,60).map(u=>`<div class="card"><div class="card-top"><a class="name" target="_blank" rel="noopener noreferrer" href="https://x.com/${encodeURIComponent(u.handle)}">${esc(u.name)}</a><span class="score">${C.format(u.followers)}</span></div><div class="small">@${esc(u.handle)} · ${u.followers.toLocaleString('zh-CN')} 位粉丝</div></div>`).join('')||'<div class="empty">还没有匹配账号。<br>刷新 X 后滚动信息流或打开账号主页。</div>');
    }draw();main.querySelector('#accountSearch').oninput=e=>draw(e.target.value);
+   main.querySelector('#profileRows').onchange=e=>{readingOptions={...readingOptions,bios:e.target.checked,profileRowsVersion:1};chrome.storage.local.set({whyReading:readingOptions});};
    main.querySelector('#followerToggle').onchange=e=>{settings.followers=e.target.checked;saveSettings();};
    main.querySelector('#clearAccounts').onclick=()=>{accounts.clear();chrome.storage.local.set({whyAccounts:[]});scan();render();};
   }else{
@@ -380,13 +443,17 @@
   catch(error){console.error('[X 浏览助手] 打开失败',error);sendResponse({ok:false,error:String(error.message||error)});}
   return false;
  });
- chrome.storage.local.get(['whySettings','whySearches','whyAccounts'],data=>{
-  settings={...settings,...data.whySettings};for(const k of ['minRate','minViews','longRate'])settings[k]=Math.max(0,Number(settings[k])||0);settings.topN=[5,10,20,50].includes(Number(settings.topN))?Number(settings.topN):10;
+ chrome.storage.onChanged.addListener((changes,area)=>{if(area==='local'&&changes.whyReading){readingOptions={bios:false,...changes.whyReading.newValue};if(settings.panel&&tab==='accounts')render();}});
+ chrome.storage.local.get(['whySettings','whySearches','whyAccounts','whyReading'],data=>{
+  readingOptions={bios:false,...data.whyReading};if(readingOptions.profileRowsVersion!==1)readingOptions.bios=false;
+  settings={...settings,...data.whySettings};if(settings.collapsed)settings.panel=false;delete settings.collapsed;delete settings.launcherPosition;delete settings.launcherDock;for(const k of ['minRate','minViews','longRate'])settings[k]=Math.max(0,Number(settings[k])||0);settings.topN=[5,10,20,50].includes(Number(settings.topN))?Number(settings.topN):10;
   settings.trending=Math.max(1,Number(settings.trending)||1000);settings.viral=Math.max(settings.trending+1,Number(settings.viral)||10000);settings.columns=Array.isArray(settings.columns)?[...new Set(settings.columns.filter(k=>Object.hasOwn(columnNames,k)))]:Object.keys(columnNames);if(!settings.columns.length)settings.columns=['rate'];settings.scopes=Array.isArray(settings.scopes)?settings.scopes.filter(k=>['home','list','profile','status'].includes(k)):['home'];if(data.whySettings&&data.whySettings.onlyHot===undefined)settings.onlyHot=!!(settings.minRate||settings.minViews||settings.longRate);
+  const migrateHeatLayout=settings.heatInlineVersion!==1;if(migrateHeatLayout){settings.heatPlacement='after-time';settings.heatInlineVersion=1;}
   searches=Array.isArray(data.whySearches)?data.whySearches:defaults;
   for(const u of data.whyAccounts||[])if(C.validateUser(u))accounts.set(C.handle(u.handle),u);
   const groups={ai:'AI',github:'GitHub',video:'代码视频',follows:'关注流'};searches=searches.map(s=>({...s,group:s.group||groups[s.id]||'未分组',pinned:!!s.pinned}));if(!['light','dark','auto'].includes(settings.theme))settings.theme='light';settings.maxAge=Math.max(0,Number(settings.maxAge)||0);if(!searches.some(s=>s.group===settings.searchGroup))settings.searchGroup='全部';
   if(!Array.isArray(data.whySearches))chrome.storage.local.set({whySearches:defaults});
+  if(migrateHeatLayout)chrome.storage.local.set({whySettings:settings});
   function start(){scan();new MutationObserver(records=>{if(records.some(r=>!host?.contains(r.target)&&!(r.target.nodeType===3?r.target.parentElement:r.target).closest?.('.why-follower,.why-heat,.why-bio')))schedule();}).observe(document.body,{childList:true,characterData:true,attributes:true,attributeFilter:['href','datetime','data-testid'],subtree:true});setInterval(schedule,30000);window.postMessage({type:'WHY_X_HELPER_READY_V1'},location.origin);}
   if(document.body)start();else document.addEventListener('DOMContentLoaded',start,{once:true});
  });
