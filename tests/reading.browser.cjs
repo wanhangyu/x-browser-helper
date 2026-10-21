@@ -16,7 +16,13 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
  html+='<script>document.querySelectorAll("time").forEach(e=>e.dateTime=new Date(Date.now()-7200000).toISOString());setTimeout(()=>fetch("/i/api/graphql/test/HomeTimeline"),500)</script>';
  await context.route('https://x.com/**',route=>route.fulfill(route.request().url().includes('/graphql/')?{contentType:'application/json',body:JSON.stringify(fixture)}:{contentType:'text/html',body:html,headers:{'Content-Security-Policy':"require-trusted-types-for 'script'; trusted-types 'none'"}}));
  try{
-  await page.goto('https://x.com/home');await page.locator('.why-bio').first().waitFor();
+  await page.goto('https://x.com/home');
+  await page.locator('#why-x-helper').waitFor({state:'attached'});await page.waitForTimeout(700);
+  assert.equal(await page.locator('.why-bio').count(),0,'extra bios and follow buttons default to off');
+  if(!await page.locator('#panel').isVisible())await page.locator('#dockTab').click();
+  await page.locator('[data-tab="accounts"]').click();await page.locator('#profileRows').check();
+  await page.locator('[data-tab="heat"]').click();
+await page.locator('.why-bio').first().waitFor();
   assert.equal(await page.locator('.why-bio').count(),2);assert.equal(await page.locator('.why-bio script').count(),0);
   await page.locator('.why-bio summary').nth(0).click();await page.locator('.why-bio[open]').waitFor();
   await page.locator('.why-bio summary').nth(1).click();await page.waitForTimeout(300);assert.equal(await page.locator('.why-bio[open]').count(),1);
@@ -45,6 +51,11 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.reload();await page.locator('.why-bio').first().waitFor();
   await page.locator('.why-bio summary').first().click();await page.screenshot({path:'artifacts/screenshots/browser.png',fullPage:true});
   const persisted=await popup.evaluate(()=>chrome.storage.local.get('whyAccounts'));assert.ok((persisted.whyAccounts||[]).every(u=>!('bio' in u)&&!('location' in u)));
+  await popup.evaluate(()=>chrome.storage.local.set({whyReading:{bios:true,hideLeft:false,hideRight:false,hideUnread:false}}));
+  await page.reload();await page.waitForTimeout(1000);assert.equal(await page.locator('.why-bio').count(),0,'legacy default-on profile rows are switched off once');
+  await popup.reload();assert.equal(await popup.locator('#bios').isChecked(),false);
+  await popup.locator('#bios').check();await page.locator('.why-bio').first().waitFor();await page.reload();await page.locator('.why-bio').first().waitFor();
+  console.log('PASS legacy profile-row migration defaults off; explicit opt-in survives refresh');
   assert.deepEqual(errors,[]);console.log('PASS no page errors, profile text absent from persistent account cache');
  }finally{await context.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

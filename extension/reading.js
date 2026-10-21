@@ -1,7 +1,7 @@
 /* Reading aids: all profile text stays in this tab; translation is controlled by the saved provider. */
 (()=>{
  'use strict';
- const TTL=30*60*1000, users=new Map(), defaults={bios:true,hideUnread:false,hideLeft:false,hideRight:false};
+ const TTL=30*60*1000, users=new Map(), defaults={bios:false,hideUnread:false,hideLeft:false,hideRight:false};
  let options={...defaults},timer,expanded=null,observer;
  const fresh=value=>value&&Date.now()-value.at<TTL;
  const field=(user,key)=>fresh(user?.[key])?user[key].value:'';
@@ -120,5 +120,5 @@
  window.addEventListener('scroll',schedule,{passive:true});
  document.addEventListener('keydown',event=>{if(event.key==='Escape')collapse();});
  chrome.storage.onChanged.addListener((changes,area)=>{if(area!=='local')return;if(changes.whyReading){options={...defaults,...changes.whyReading.newValue};schedule();}if(changes.translationConfig){document.querySelectorAll('.why-bio').forEach(box=>box.resetTranslation?.());schedule();}});
- chrome.storage.local.get('whyReading',data=>{options={...defaults,...data.whyReading};if(document.body)start();else document.addEventListener('DOMContentLoaded',start,{once:true});});
+ chrome.storage.local.get('whyReading',data=>{options={...defaults,...data.whyReading};if(options.profileRowsVersion!==1){options.bios=false;options.profileRowsVersion=1;chrome.storage.local.set({whyReading:options});}if(document.body)start();else document.addEventListener('DOMContentLoaded',start,{once:true});});
 })();

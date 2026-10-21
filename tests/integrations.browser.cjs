@@ -25,7 +25,13 @@ const folder=path.resolve(__dirname,'../extension'),C=require(path.join(folder,'
  </script>`;
  await context.route('https://x.com/**',route=>{const url=route.request().url();if(url.includes('friendships/create')){follows++;return route.fulfill({contentType:'application/json',body:JSON.stringify({screen_name:'alice',followers_count:1000,following:true,follow_request_sent:false})});}if(url.includes('/graphql/'))return route.fulfill({contentType:'application/json',body:JSON.stringify(fixture)});return route.fulfill({contentType:'text/html',body:html,headers:{'Content-Security-Policy':"require-trusted-types-for 'script'; trusted-types 'none'"}});});
  try{
-  await page.goto('https://x.com/home');await page.locator('#outer > [data-testid="User-Name"] .why-heat').waitFor();
+  await page.goto('https://x.com/home');
+  await page.locator('#why-x-helper').waitFor({state:'attached'});await page.waitForTimeout(700);
+  assert.equal(await page.locator('.why-bio').count(),0,'extra bios and follow buttons default to off');
+  if(!await page.locator('#panel').isVisible())await page.locator('#dockTab').click();
+  await page.locator('[data-tab="accounts"]').click();await page.locator('#profileRows').check();
+  await page.locator('[data-tab="heat"]').click();
+await page.locator('#outer > [data-testid="User-Name"] .why-heat').waitFor();
   await page.locator('#quote .why-heat').waitFor();assert.equal(await page.locator('#quote .why-heat').getAttribute('data-tweet-id'),'202');assert.equal(await page.locator('#outer > [data-testid="User-Name"] .why-heat').getAttribute('data-tweet-id'),'101');assert.equal(await page.locator('#ad .why-heat').count(),0);
   console.log('PASS installed extension separates outer and linkless quoted metrics; ad metrics excluded despite DOM fallback');
   const follow=page.locator('#outer > .why-bio [data-role=follow]');await follow.waitFor();assert.equal(await page.locator('#quote [data-role=follow]:visible').count(),0);
@@ -44,7 +50,7 @@ const folder=path.resolve(__dirname,'../extension'),C=require(path.join(folder,'
   await page.goto('https://x.com/alice/status/101');await page.locator('#outer > [data-testid="User-Name"] .why-heat').waitFor();
   await page.locator('#quote .why-heat').waitFor();
   await page.evaluate(()=>window.postMessage({type:'WHY_X_HELPER_DATA_V1',data:{users:[],tweets:[{id:'101',handle:'alice',created:Date.now()-7200000,views:10000,likes:10,reposts:2,replies:1,bookmarks:3,at:Date.now()-31*60000}]}},location.origin));
-  await page.waitForFunction(()=>document.querySelector('#outer > [data-testid="User-Name"] .why-heat')?.textContent==='热度待加载');
+  await page.waitForFunction(()=>document.querySelector('#outer > [data-testid="User-Name"] .why-heat')?.textContent==='待加载');
   await page.locator('#outer > [data-testid="User-Name"] .why-heat').hover();assert.equal(await page.locator('#metricsTip[data-open="true"]').count(),0);
   await page.evaluate(()=>fetch('/i/api/graphql/test/HomeTimeline'));await page.waitForFunction(()=>document.querySelector('#outer > [data-testid="User-Name"] .why-heat')?.textContent.includes('/h'));
   console.log('PASS expired data is not rescued from DOM or shown in metrics tooltip; fresh response restores it');
