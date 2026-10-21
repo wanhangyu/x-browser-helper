@@ -2,9 +2,9 @@
 
 **免费开源的 X / Twitter 浏览增强插件。看帖子热度、找本页热点、了解账号、保存搜索，让日常浏览更顺手。**
 
-适用于桌面 **Chrome / Microsoft Edge**，采用 **MIT License**。当前版本 **1.8.3**。
+适用于桌面 **Chrome / Microsoft Edge**，采用 **MIT License**。当前版本 **1.8.4**。
 
-[下载源码 ZIP](https://github.com/wanhangyu/x-browser-helper/archive/refs/heads/main.zip) · [安装方法](#安装方法) · [使用说明](#开始使用) · [隐私说明](PRIVACY.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/wanhangyu/x-browser-helper/issues)
+[下载安装包](https://github.com/wanhangyu/x-browser-helper/releases/latest) · [安装方法](#安装方法) · [使用说明](#开始使用) · [隐私说明](PRIVACY.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/wanhangyu/x-browser-helper/issues)
 
 ## 能帮你做什么
 
@@ -49,27 +49,27 @@
 
 当前通过浏览器的“加载已解压的扩展程序”安装。
 
-1. [下载本仓库 ZIP](https://github.com/wanhangyu/x-browser-helper/archive/refs/heads/main.zip)，解压到一个固定文件夹。
+1. 在 [Releases](https://github.com/wanhangyu/x-browser-helper/releases/latest) 下载附件 **`x-browser-helper-1.8.4.zip`**，解压到一个固定文件夹。同页 `.sha256` 附件用于核对文件完整性。
 2. 打开扩展管理页：Chrome 输入 `chrome://extensions`，Edge 输入 `edge://extensions`。
 3. 开启页面上的**开发者模式**。
 4. 点击**加载已解压的扩展程序**。
-5. 选择解压后的 **`extension` 文件夹**，这个文件夹里应直接能看到 `manifest.json`。
+5. 选择解压后的 **`x-browser-helper` 文件夹**，这个文件夹里应直接能看到 `manifest.json`。
 6. 打开或刷新 [x.com/home](https://x.com/home)，点击页面侧边的 **X 助手** 标签。
 
 ```text
-x-browser-helper-main/
-├─ extension/            ← 安装时选择这个文件夹
-│  ├─ manifest.json
-│  └─ ...
-├─ README.md
+x-browser-helper/        ← 安装时选择这个文件夹
+├─ manifest.json
+├─ 使用说明.md
 └─ ...
 ```
 
 浏览器使用插件的过程不需要安装 Node.js、Python 或开发依赖。扩展文件夹需要保留在原位置，方便浏览器以后继续加载。
 
+开发者也可[下载源码 ZIP](https://github.com/wanhangyu/x-browser-helper/archive/refs/heads/main.zip)，此时选择源码中的 `extension` 文件夹。Release 页面自动生成的 Source code 与上面的安装附件不是同一个包。
+
 ### 已安装用户如何更新
 
-1. 下载新版本，把 `extension` 内文件覆盖到**浏览器原来加载的文件夹**。
+1. 下载新安装包，把其中 `x-browser-helper` 内文件覆盖到**浏览器原来加载的文件夹**。
 2. 在扩展管理页找到 **X 浏览助手**，点击**重新加载**。
 3. 刷新 X 页面。
 
@@ -144,13 +144,19 @@ x-browser-helper-main/
 
 选择在线服务后，待翻译的简介会发送给你选择的服务商；保存时按域名申请访问权限。**插件免费，自定义服务的调用费用由服务商决定。** 可使用设置页的虚构示例测试连接，再用于日常浏览。
 
+Key 默认仅本次浏览器会话使用，重启浏览器、重载或更新扩展后需重新填写。只有勾选“在此浏览器记住 Key”才长期保存；本地存储不是加密保险箱。旧版本没有明确选择的持久 Key 会自动迁入当前会话。
+
+设置页会显示准备申请的域名及已授权站点，支持撤销。撤销当前服务后会停用在线翻译并清除 Key。清单中的可选 `https://*/*` 是为了接受你自行填写的 HTTPS 接口，保存时只请求对应域名，并不默认授权所有网站。
+
+Anthropic 协议会携带 `anthropic-dangerous-direct-browser-access` 请求头以允许浏览器直连；Key 发送到你填写的接口域名，请确认服务商可信。
+
 ## 数据与隐私
 
 - 从 X 当前页面已收到的接口响应和可见元素读取数据。
 - 固定搜索、外观、布局和粉丝缓存保存在当前浏览器本地。
 - 简介、关系、帖子指标及译文在当前页面内存中处理，不写入持久账号缓存。
 - 项目没有自建的数据上传或分析后台。
-- 在线翻译为可选项，启用后的简介会发往所选服务；Key 保存在浏览器本地，由扩展后台使用。
+- 在线翻译为可选项，启用后的简介会发往所选服务；Key 默认会话保存，明确勾选后才长期保存在本机，由扩展后台使用。
 
 基础权限为 `storage` 和 `activeTab`，运行站点为 `x.com`、`twitter.com` 与 `pro.x.com`。详细数据范围、可选域名权限和关注操作见 [隐私说明](PRIVACY.md)。
 
@@ -158,7 +164,7 @@ x-browser-helper-main/
 
 ### 安装时为什么提示找不到清单文件？
 
-请选择直接包含 `manifest.json` 的 `extension` 文件夹，不要选择仓库最外层，也不要选择尚未解压的 ZIP。
+请选择直接包含 `manifest.json` 的文件夹：Release 安装包为 `x-browser-helper`，源码 ZIP 为 `extension`。不要选择尚未解压的 ZIP。
 
 ### 更新后界面没有变化？
 
