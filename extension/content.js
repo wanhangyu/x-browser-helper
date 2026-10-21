@@ -151,6 +151,7 @@
     b.dataset.compact=String(settings.compactLabels!==false);
     const label=m?.rate!=null?`${m.rate>=settings.viral?'🔥':m.rate>=settings.trending?'🚀':'🌱'} ${C.format(m.rate)}/h`:m?.young?'刚发布':'待加载';
     if(b.textContent!==label)b.textContent=label;
+    b.setAttribute('aria-label',`平均热度 ${label}；发布以来累计浏览量除以小时数，非实时新增`);
     b.dataset.tweetId=info.id;
     if(!b.dataset.whyTooltip){b.dataset.whyTooltip='1';b.tabIndex=0;b.addEventListener('mouseenter',()=>showMetrics(b));b.addEventListener('mouseleave',hideMetrics);b.addEventListener('focus',()=>showMetrics(b));b.addEventListener('blur',hideMetrics);}
     b.dataset.level=m?.rate>=settings.viral?'hot':m?.rate>=settings.trending?'warm':'normal';
@@ -168,7 +169,7 @@
     if(!qb){qb=document.createElement('span');qb.className='why-heat';qb.tabIndex=0;qb.addEventListener('mouseenter',()=>showMetrics(qb));qb.addEventListener('mouseleave',hideMetrics);qb.addEventListener('focus',()=>showMetrics(qb));qb.addEventListener('blur',hideMetrics);}
     placeHeat(q.header,q.handle,qb);qb.dataset.tweetId=q.id;qb.dataset.compact=String(settings.compactLabels!==false);
     const label=`${qm.rate>=settings.viral?'🔥':qm.rate>=settings.trending?'🚀':'🌱'} ${C.format(qm.rate)}/h`;
-    if(qb.textContent!==label)qb.textContent=label;qb.dataset.level=qm.rate>=settings.viral?'hot':qm.rate>=settings.trending?'warm':'normal';qb.title='引用原帖的平均浏览量／小时；不是外层帖子的指标。';
+    if(qb.textContent!==label)qb.textContent=label;qb.dataset.level=qm.rate>=settings.viral?'hot':qm.rate>=settings.trending?'warm':'normal';qb.title='引用原帖平均热度：发布以来累计浏览量 ÷ 小时数，非实时新增；不足 6 分钟按 6 分钟计算。';qb.setAttribute('aria-label',`引用原帖平均热度 ${label}；非实时新增`);
    }
    for(const header of article.querySelectorAll('[data-testid="User-Name"], [data-testid="UserName"]'))if(header!==info.header&&!quoteHeaders.has(header))header.querySelectorAll('.why-heat').forEach(b=>b.remove());
 
