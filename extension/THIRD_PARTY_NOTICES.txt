@@ -1,0 +1,5 @@
+This extension includes adapted components from XpandMax, https://github.com/yiren-ai/xpandmax
+Source commit: c0414c369453d6b6827fca2e700083282aabab8a
+Files: translation.js, translation-background.js, translation-options.js/html/css, follow.js; reading.js also adapts sidebar and notification CSS rules.
+These components are MIT licensed. The original copyright and full license are retained in third-party/xpandmax-LICENSE.txt.
+Local changes adapt the settings branding, allowed X hosts, and author-header location to X 浏览助手.
