@@ -214,9 +214,10 @@
     const settings = sender.url === chrome.runtime.getURL('translation-options.html');
     const xPage = sender.tab && sender.frameId === 0 && /^https:\/\/(x\.com|twitter\.com|pro\.x\.com)\//.test(sender.url || '');
     if (!(settings && ['translation-config', 'translation-save', 'translation-test'].includes(message.type))
-      && !(xPage && ['translation-status', 'translate-bio'].includes(message.type))) return;
+      && !(xPage && ['translation-status', 'translate-bio', 'translation-open-settings'].includes(message.type))) return;
     (async () => {
       await ready;
+      if (message.type === 'translation-open-settings') { await chrome.runtime.openOptionsPage(); return { opened: true }; }
       if (message.type === 'translation-status') {
         const currentRevision = revision();
         const { provider } = await getConfig();

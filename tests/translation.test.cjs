@@ -12,6 +12,10 @@ const request=async text=>{const status=await send({type:'translation-status'},x
 (async()=>{
  const migrated=await send({type:'translation-config'});assert.equal(migrated.apiKey,'legacy-fixture');assert.equal(config.apiKey,undefined);assert.equal(config.rememberKey,false);
  console.log('PASS legacy persistent key migrates into session storage');
+ let settingsOpened=0;chrome.runtime.openOptionsPage=async()=>{settingsOpened++;};
+ assert.equal((await send({type:'translation-open-settings'},xPage)).opened,true);assert.equal(settingsOpened,1);
+ assert.equal(listener({type:'translation-open-settings'},{...xPage,frameId:1},()=>{}),undefined);assert.equal(settingsOpened,1);
+ console.log('PASS translation settings shortcut only accepts the extension top-frame X context');
  for(const [provider,body,suffix] of [
   ['custom',{choices:[{finish_reason:'stop',message:{content:'我制作实用工具。'}}]},'/v1/chat/completions'],
   ['anthropic',{stop_reason:'end_turn',content:[{type:'text',text:'我制作实用工具。'}]},'/v1/messages'],
