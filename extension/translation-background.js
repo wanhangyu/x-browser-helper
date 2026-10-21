@@ -12,7 +12,8 @@
     timeout: '接口请求超时，请检查服务商状态',
     response: '接口返回格式异常，或译文为空、过长',
     network: '连接失败，请检查接口地址、网络及服务商状态',
-    cancelled: '翻译设置已更改，请使用新设置重试'
+    cancelled: '翻译设置已更改，请使用新设置重试',
+    keyExpired: '本次会话的 Key 已清除，请打开简介翻译设置重新填写并保存'
   };
   const fail = code => { throw new Error(code); };
   const active = new Set();
@@ -48,13 +49,47 @@
       if (!path.endsWith(suffix)) path += suffix;
     }
     url.pathname = path;
-    return { provider: value.provider, endpoint: url.href, model: value.model.trim(), apiKey: value.apiKey.trim() };
+    return { provider: value.provider, endpoint: url.href, model: value.model.trim(), apiKey: value.apiKey.trim(), rememberKey: value.rememberKey === true };
   }
 
+  // Migrate legacy persistent keys to session storage without discarding the current session.
+  const ready = (async () => {
+    const { translationConfig: old } = await chrome.storage.local.get('translationConfig');
+    if (!old || typeof old.apiKey !== 'string' || old.rememberKey === true) return;
+    const { apiKey, ...rest } = old;
+    const keyId = crypto.randomUUID();
+    await chrome.storage.session.set({ translationKey: { id: keyId, value: apiKey } });
+    await chrome.storage.local.set({ translationConfig: { ...rest, rememberKey: false, hasKey: !!apiKey, keyId } });
+  })();
+
   async function getConfig() {
+    await ready;
     const stored = await chrome.storage.local.get('translationConfig');
-    return stored.translationConfig || { provider: 'local' };
+    const config = stored.translationConfig || { provider: 'local' };
+    if (!config.keyId) return config;
+    const { translationKey } = await chrome.storage.session.get('translationKey');
+    const found = translationKey?.id === config.keyId;
+    return { ...config, apiKey: found ? translationKey.value : '', keyExpired: !found && config.hasKey === true };
   }
+
+  async function saveConfig(config) {
+    const { apiKey = '', ...stored } = config;
+    if (online(config.provider) && config.provider !== 'google') {
+      stored.hasKey = !!apiKey;
+      stored.keyId = crypto.randomUUID();
+      if (config.rememberKey) stored.apiKey = apiKey;
+      await chrome.storage.session.set({ translationKey: config.rememberKey ? null : { id: stored.keyId, value: apiKey } });
+      if (config.rememberKey) delete stored.keyId;
+    } else await chrome.storage.session.set({ translationKey: null });
+    await chrome.storage.local.set({ translationConfig: stored });
+  }
+
+  chrome.permissions.onRemoved?.addListener(async () => {
+    const config = await getConfig();
+    if (online(config.provider)) {
+      try { await permission(config); } catch { await saveConfig({ provider: 'local' }); }
+    }
+  });
 
   async function permission(config) {
     if (!await chrome.permissions.contains({ origins: [`${new URL(config.provider === 'google' ? googleEndpoint : config.endpoint).origin}/*`] })) fail('permission');
@@ -82,7 +117,9 @@
   async function performTranslation(text, requestGeneration, controller) {
     const timer = setTimeout(() => controller.abort(), 20000);
     try {
-      const config = validate(await getConfig());
+      const saved = await getConfig();
+      if (saved.keyExpired) fail('keyExpired');
+      const config = validate(saved);
       if (!online(config.provider)) fail('disabled');
       await permission(config);
       if (requestGeneration !== generation) fail('cancelled');
@@ -179,6 +216,7 @@
     if (!(settings && ['translation-config', 'translation-save', 'translation-test'].includes(message.type))
       && !(xPage && ['translation-status', 'translate-bio'].includes(message.type))) return;
     (async () => {
+      await ready;
       if (message.type === 'translation-status') {
         const currentRevision = revision();
         const { provider } = await getConfig();
@@ -188,7 +226,7 @@
       if (message.type === 'translation-save') {
         const config = validate(message.config);
         if (online(config.provider)) await permission(config);
-        await chrome.storage.local.set({ translationConfig: config });
+        await saveConfig(config);
         return { saved: true };
       }
       return translate(message.type === 'translation-test' ? 'I build useful tools.' : message.text,

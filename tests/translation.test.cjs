@@ -1,8 +1,8 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
 const folder=path.resolve(__dirname,'../extension');
 const source=fs.readFileSync(path.join(folder,'translation-background.js'),'utf8');
-let config={provider:'local'},granted=true,payload,calls=[],listener;const changes=[];
-const chrome={runtime:{id:'test',getURL:name=>'chrome-extension://test/'+name,onMessage:{addListener:fn=>listener=fn}},permissions:{contains:async()=>granted},storage:{onChanged:{addListener:fn=>changes.push(fn)},local:{get:async()=>({translationConfig:config}),set:async data=>{const old=config;config=data.translationConfig;changes.forEach(fn=>fn({translationConfig:{oldValue:old,newValue:config}},'local'));}}}};
+let config={provider:'custom',endpoint:'https://example.test/v1/chat/completions',model:'m',apiKey:'legacy-fixture'},session={},granted=true,payload,calls=[],listener,removed;const changes=[];
+const chrome={runtime:{id:'test',getURL:name=>'chrome-extension://test/'+name,onMessage:{addListener:fn=>listener=fn}},permissions:{contains:async()=>granted,onRemoved:{addListener:fn=>removed=fn}},storage:{onChanged:{addListener:fn=>changes.push(fn)},session:{get:async()=>session,set:async data=>Object.assign(session,data)},local:{get:async()=>({translationConfig:config}),set:async data=>{const old=config;config=data.translationConfig;changes.forEach(fn=>fn({translationConfig:{oldValue:old,newValue:config}},'local'));}}}};
 const ctx={chrome,crypto:require('node:crypto').webcrypto,URL,AbortController,TextDecoder,setTimeout,clearTimeout,fetch:async(url,options)=>{calls.push({url,options});return new Response(JSON.stringify(payload),{status:200});}};
 vm.runInNewContext(source,ctx);
 const settings={id:'test',url:'chrome-extension://test/translation-options.html'};
@@ -10,6 +10,8 @@ const xPage={id:'test',tab:{id:1},frameId:0,url:'https://x.com/home'};
 function send(message,sender=settings){return new Promise((resolve,reject)=>{const result=listener(message,sender,resolve);if(result!==true)reject(Error('rejected sender'));});}
 const request=async text=>{const status=await send({type:'translation-status'},xPage);return send({type:'translate-bio',text,revision:status.revision},xPage);};
 (async()=>{
+ const migrated=await send({type:'translation-config'});assert.equal(migrated.apiKey,'legacy-fixture');assert.equal(config.apiKey,undefined);assert.equal(config.rememberKey,false);
+ console.log('PASS legacy persistent key migrates into session storage');
  for(const [provider,body,suffix] of [
   ['custom',{choices:[{finish_reason:'stop',message:{content:'我制作实用工具。'}}]},'/v1/chat/completions'],
   ['anthropic',{stop_reason:'end_turn',content:[{type:'text',text:'我制作实用工具。'}]},'/v1/messages'],
@@ -21,6 +23,13 @@ const request=async text=>{const status=await send({type:'translation-status'},x
   if(provider==='google')assert.equal(config.apiKey,undefined);else{const posted=JSON.parse(call.options.body);assert.ok(JSON.stringify(posted).includes('I build useful tools.'));assert.ok(!JSON.stringify(posted).includes('fixture-key'));}
  }
  console.log('PASS all four online protocols, endpoint normalization, request credentials and response extraction');
+ await send({type:'translation-save',config:{provider:'custom',endpoint:'https://example.test',model:'m',apiKey:'session-fixture'}});
+ assert.equal(config.apiKey,undefined);assert.equal(session.translationKey.value,'session-fixture');
+ session={};const before=calls.length;assert.ok((await request('Hello')).error.includes('会话'));assert.equal(calls.length,before);assert.equal((await send({type:'translation-config'})).keyExpired,true);
+ await send({type:'translation-save',config:{provider:'custom',endpoint:'https://example.test',model:'m',apiKey:'remember-fixture',rememberKey:true}});
+ assert.equal(config.apiKey,'remember-fixture');assert.equal(session.translationKey,null);session={};assert.equal((await send({type:'translation-config'})).apiKey,'remember-fixture');
+ granted=false;await removed({origins:['https://example.test/*']});assert.equal(config.provider,'local');assert.equal(config.apiKey,undefined);assert.equal(session.translationKey,null);granted=true;
+ console.log('PASS session-only default, expiry without requests, explicit persistence and revocation clears keys');
  for(const endpoint of ['http://example.test','https://user:password@example.test','https://example.test/?key=secret','https://example.test/#x']){
   const result=await send({type:'translation-save',config:{provider:'custom',endpoint,model:'m',apiKey:''}});assert.ok(result.error);
  }
