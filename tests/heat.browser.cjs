@@ -1,4 +1,4 @@
-const {launchExtension}=require('./browser-helpers.cjs');
+const {launchExtension,openSettings,resetLayout,toggleHeatSettings}=require('./browser-helpers.cjs');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
  const root=path.resolve(__dirname,'..'),folder=process.env.X_HELPER_EXTENSION_PATH||path.join(root,'extension'),now=Date.now(),date=new Date(now-7200000).toISOString();
@@ -29,7 +29,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const afterTime=await page.locator('#post111').evaluate(a=>{const time=a.querySelector('time').closest('a'),f=a.querySelector('.why-follower');return time.nextElementSibling===f&&f.getBoundingClientRect().left>=time.getBoundingClientRect().right;});assert.ok(afterTime,'follower is immediately after timestamp');
   const sequence=await page.locator('#post111').evaluate(a=>{const t=a.querySelector('time').closest('a'),f=a.querySelector('.why-follower'),h=a.querySelector('.why-heat');return t.nextElementSibling===f&&f.nextElementSibling===h&&h.getBoundingClientRect().left>=f.getBoundingClientRect().right;});assert.ok(sequence,'default order is timestamp, followers, then heat');
   assert.equal(await page.locator('.why-heat-header').count(),0,'default inline layout does not reserve right-side space');
-  await page.locator('#openHeatOptions').click();await page.locator('#heatPlacement').selectOption('right');await page.waitForTimeout(400);await page.locator('#openHeatOptions').click();
+  await toggleHeatSettings(page);await page.locator('#heatPlacement').selectOption('right');await page.waitForTimeout(400);await toggleHeatSettings(page);
   const geometry=await page.locator('#post111').evaluate(article=>{const h=article.querySelector('[data-testid="User-Name"]'),b=h.querySelector('.why-heat'),menu=article.querySelector('.native');const hr=h.getBoundingClientRect(),br=b.getBoundingClientRect(),mr=menu.getBoundingClientRect();return{right:Math.abs(hr.right-br.right)<2,clear:br.right<=mr.left,top:Math.abs(hr.top+3-br.top)<2,inside:b.parentElement===h};});
   assert.deepEqual(geometry,{right:true,clear:true,top:true,inside:true});
   const gaps=await page.locator('article:not(#post444)').evaluateAll(rows=>rows.map(a=>a.querySelector('.native').getBoundingClientRect().left-a.querySelector('.why-heat').getBoundingClientRect().right));
@@ -47,7 +47,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const gr=await page.locator('#panel header').boundingBox();await page.mouse.move(gr.x+50,gr.y+15);await page.mouse.down();await page.mouse.move(650,200,{steps:8});await page.mouse.up();assert.equal(await panel.getAttribute('data-dock'),'');
   await dragPanel('right');assert.equal(await panel.getAttribute('data-dock'),'right');assert.ok(Math.abs((await panel.boundingBox()).x+360-1480)<1);
   await page.mouse.move(800,950);await page.waitForTimeout(450);assert.equal(await panel.isVisible(),true);await page.locator('#fold').click();await page.locator('#dockTab').click();assert.equal(await panel.isVisible(),true);
-  await page.locator('#resetLayout').click();
+  await resetLayout(page);
   console.log('PASS panel left/right snap, explicit collapse/expand, no hover changes and drag-out undocking');
   // A collapsed tab has its own edge; floating-panel position and size must survive.
   const freeHeader=await page.locator('#panel header').boundingBox();await page.mouse.move(freeHeader.x+50,freeHeader.y+15);await page.mouse.down();await page.mouse.move(530,200,{steps:8});await page.mouse.up();
@@ -56,7 +56,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   for(let i=0;i<2;i++){await page.locator('#fold').click();assert.equal(await page.locator('#dockTab').getAttribute('data-edge'),'left');await page.locator('#dockTab').click();assert.deepEqual(await panel.boundingBox(),floatingRect,'expand restores exact floating position and size');}
   await page.locator('#fold').click();await page.reload();await page.waitForTimeout(700);await page.locator('#dockTab').click();assert.deepEqual(await panel.boundingBox(),floatingRect,'saved floating rect survives refresh while collapsed');
   await page.locator('#fold').click();await page.setViewportSize({width:700,height:600});await page.locator('#dockTab').click();const clamped=await panel.boundingBox();assert.ok(clamped.x>=0&&clamped.y>=0&&clamped.x+clamped.width<=700&&clamped.y+clamped.height<=600,'restored panel stays inside a resized window');
-  await page.setViewportSize({width:1500,height:1000});await page.locator('#resetLayout').click();
+  await page.setViewportSize({width:1500,height:1000});await resetLayout(page);
   console.log('PASS independent tab edge, exact floating rect restoration, persistence and viewport bounds');
   const originalPanel=await panel.boundingBox();await page.locator('#fold').click();
   async function dragTab(x,y){const r=await page.locator('#dockTab').boundingBox();await page.mouse.move(r.x+r.width/2,r.y+r.height/2);await page.mouse.down();await page.mouse.move(x,y,{steps:10});await page.mouse.up();assert.equal(await panel.isVisible(),false,'dragging tab must never expand the panel');}
@@ -68,7 +68,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await dragTab(1499,350);assert.equal(await page.locator('#dockTab').getAttribute('data-edge'),'right');const rightTab=await page.locator('#dockTab').boundingBox();assert.ok(Math.abs(rightTab.x+rightTab.width-1480)<1);
   await page.locator('#dockTab').press('ArrowLeft');assert.equal(await page.locator('#dockTab').getAttribute('data-edge'),'');
   await page.setViewportSize({width:700,height:600});await page.waitForFunction(()=>{const r=document.querySelector('#why-x-helper').shadowRoot.querySelector('#dockTab').getBoundingClientRect();return r.x>=0&&r.y>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight;});const tabBounds=await page.locator('#dockTab').boundingBox();assert.ok(tabBounds.x>=0&&tabBounds.y>=0&&tabBounds.x+tabBounds.width<=701&&tabBounds.y+tabBounds.height<=600);
-  await page.setViewportSize({width:1500,height:1000});await page.locator('#dockTab').click();assert.deepEqual(await panel.boundingBox(),originalPanel);await page.locator('#resetLayout').click();
+  await page.setViewportSize({width:1500,height:1000});await page.locator('#dockTab').click();assert.deepEqual(await panel.boundingBox(),originalPanel);await resetLayout(page);
   console.log('PASS minimized tab free drag, left/right snap, vertical and refresh persistence, click/drag separation and independent panel memory');
   // Force a wide native scrollbar and verify both expanded and collapsed controls.
   await page.addStyleTag({content:'html{overflow-y:scroll;scrollbar-gutter:stable}html::-webkit-scrollbar{width:28px;height:20px}'});
@@ -76,18 +76,18 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   const contentRight=await page.evaluate(()=>document.documentElement.clientWidth);
   const dockedPanel=await panel.boundingBox();assert.ok(dockedPanel.x+dockedPanel.width<=Math.min(1480,contentRight-8)+1,'panel avoids native and overlay scrollbar zones');
   await page.locator('#fold').click();await dragTab(1499,350);const dockedTab=await page.locator('#dockTab').boundingBox();assert.ok(dockedTab.x+dockedTab.width<=Math.min(1480,contentRight-8)+1,'tab avoids native and overlay scrollbar zones');
-  await page.locator('#dockTab').click();await page.locator('#resetLayout').click();
+  await page.locator('#dockTab').click();await resetLayout(page);
   console.log('PASS full panel and minimized tab remain clear of 28px scrollbar and minimum overlay-scrollbar inset');
 
 
 
 
   assert.equal(await page.locator('#maxAge').isVisible(),false,'filters stay inside closed settings');
-  await page.locator('#openHeatOptions').click();
+  await toggleHeatSettings(page);
   await page.locator('#heatPlacement').selectOption('name');await page.waitForTimeout(500);
   assert.equal(await page.locator('.why-heat-header').count(),0,'inline mode removes right-side reserved space');
   await page.locator('#heatPlacement').selectOption('right');await page.waitForTimeout(500);
-  await page.locator('#openHeatOptions').click();
+  await toggleHeatSettings(page);
   for(const width of [440,320]){
    await page.locator('body > main').evaluate((n,w)=>n.style.width=w+'px',width);await page.waitForTimeout(250);
    const fit=await page.locator('#post111').evaluate(article=>{const h=article.querySelector('[data-testid="User-Name"]'),b=h.querySelector('.why-heat'),menu=article.querySelector('.native');const hr=h.getBoundingClientRect(),br=b.getBoundingClientRect(),mr=menu.getBoundingClientRect();return br.left>=hr.left&&br.right<=mr.left&&article.scrollWidth<=article.clientWidth;});
@@ -98,8 +98,8 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   assert.equal(await page.locator('#post111 .why-heat').getAttribute('data-placement'),'right','chosen placement persists across refresh');
   console.log('PASS right-aligned header, native menu clearance, 320/440px widths, inline option and saved preference');
 
-  await page.locator('#openHeatOptions').click();await page.locator('#heatPlacement').selectOption('after-time');await page.waitForTimeout(400);await page.locator('#openHeatOptions').click();
-  await page.locator('[data-tab="accounts"]').click();await page.locator('#followerToggle').uncheck();await page.waitForTimeout(400);
+  await toggleHeatSettings(page);await page.locator('#heatPlacement').selectOption('after-time');await page.waitForTimeout(400);await toggleHeatSettings(page);
+  await openSettings(page);await page.locator('#followerToggle').uncheck();await page.waitForTimeout(400);
   assert.equal(await page.locator('#post111').evaluate(a=>a.querySelector('time').closest('a').nextElementSibling?.classList.contains('why-heat')),true,'without follower badge, heat follows time');
   await page.locator('#followerToggle').check();await page.waitForTimeout(400);await page.locator('[data-tab="heat"]').click();
   await page.reload();await page.waitForTimeout(700);assert.equal(await page.locator('#post111 .why-heat').getAttribute('data-placement'),'after-time');
@@ -109,7 +109,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.screenshot({path:path.join(root,'artifacts/screenshots/heat-layout-170.png'),fullPage:true});
   await page.screenshot({path:path.join(root,'artifacts/screenshots/workbench-expanded-180.png'),fullPage:true});
   await page.locator('#fold').click();await page.screenshot({path:path.join(root,'artifacts/screenshots/workbench-collapsed-180.png'),fullPage:true});await page.locator('#dockTab').click();
-  await page.locator('#themeChoice').selectOption('dark');await page.waitForTimeout(300);
-  await page.screenshot({path:path.join(root,'artifacts/screenshots/heat-layout-170-dark.png'),fullPage:true});assert.deepEqual(errors,[]);
+  await openSettings(page,'appearanceOptions');await page.locator('#themeChoice').selectOption('dark');await page.waitForTimeout(300);
+  await page.locator('#backFromSettings').click();await page.screenshot({path:path.join(root,'artifacts/screenshots/heat-layout-170-dark.png'),fullPage:true});assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

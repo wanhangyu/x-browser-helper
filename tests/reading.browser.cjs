@@ -1,4 +1,4 @@
-const {launchExtension}=require('./browser-helpers.cjs');
+const {launchExtension,openSettings,resetLayout,toggleHeatSettings}=require('./browser-helpers.cjs');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 (async()=>{
  const folder=path.resolve('extension'),C=require(path.join(folder,'core.js'));
@@ -20,7 +20,7 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
   await page.locator('#why-x-helper').waitFor({state:'attached'});await page.waitForTimeout(700);
   assert.equal(await page.locator('.why-bio').count(),0,'extra bios and follow buttons default to off');
   if(!await page.locator('#panel').isVisible())await page.locator('#dockTab').click();
-  await page.locator('[data-tab="accounts"]').click();await page.locator('#profileRows').check();
+  await openSettings(page);await page.locator('#profileRows').check();
   await page.locator('[data-tab="heat"]').click();
 await page.locator('.why-bio').first().waitFor();
   assert.equal(await page.locator('.why-bio').count(),2);assert.equal(await page.locator('.why-bio script').count(),0);

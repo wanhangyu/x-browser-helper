@@ -1,4 +1,4 @@
-const {launchExtension}=require('./browser-helpers.cjs');
+const {launchExtension,openSettings}=require('./browser-helpers.cjs');
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const folder=path.resolve(__dirname,'../extension'),C=require(path.join(folder,'core.js'));
 (async()=>{
@@ -29,7 +29,7 @@ const folder=path.resolve(__dirname,'../extension'),C=require(path.join(folder,'
   await page.locator('#why-x-helper').waitFor({state:'attached'});await page.waitForTimeout(700);
   assert.equal(await page.locator('.why-bio').count(),0,'extra bios and follow buttons default to off');
   if(!await page.locator('#panel').isVisible())await page.locator('#dockTab').click();
-  await page.locator('[data-tab="accounts"]').click();await page.locator('#profileRows').check();
+  await openSettings(page);await page.locator('#profileRows').check();
   await page.locator('[data-tab="heat"]').click();
 await page.locator('#outer > [data-testid="User-Name"] .why-heat').waitFor();
   await page.locator('#quote .why-heat').waitFor();assert.equal(await page.locator('#quote .why-heat').getAttribute('data-tweet-id'),'202');assert.equal(await page.locator('#outer > [data-testid="User-Name"] .why-heat').getAttribute('data-tweet-id'),'101');assert.equal(await page.locator('#ad .why-heat').count(),0);

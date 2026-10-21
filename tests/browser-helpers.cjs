@@ -14,4 +14,10 @@ async function launchExtension(folder,viewport){
  context.close=async()=>{try{await close();}finally{if(path.dirname(profile)!==base)throw Error('Unexpected test profile path');fs.rmSync(profile,{recursive:true,force:true});}};
  return context;
 }
-module.exports={launchExtension};
+async function openSettings(page,group){
+ if(!await page.locator('#backFromSettings').count())await page.locator('#openSettings').click();
+ if(group&&await page.locator('#'+group).getAttribute('open')===null)await page.locator('#'+group+'>summary').click();
+}
+async function resetLayout(page){await openSettings(page,'layoutOptions');await page.locator('#resetLayout').click();await page.locator('#backFromSettings').click();}
+async function toggleHeatSettings(page){if(await page.locator('#backFromSettings').count())await page.locator('#backFromSettings').click();else await openSettings(page,'heatOptions');}
+module.exports={launchExtension,openSettings,resetLayout,toggleHeatSettings};
