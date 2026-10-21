@@ -1,6 +1,6 @@
 # X 浏览助手
 
-在 X 上看账号、看热度、找内容。面向桌面 Chrome / Edge 的 Manifest V3 扩展，由 [xiaoyu0721](https://github.com/xiaoyu0721) 独立维护。
+在 X 上看账号、看热度、找内容。面向桌面 Chrome / Edge 的 Manifest V3 扩展，由 [万航宇](https://github.com/wanhangyu) 独立维护。
 
 当前版本：**1.6.1**。无需订阅或激活，扩展运行时不依赖第三方 JavaScript 包。
 
