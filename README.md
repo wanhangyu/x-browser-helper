@@ -4,7 +4,13 @@
 
 适用于桌面 **Chrome / Microsoft Edge**，采用 **MIT License**。当前版本 **1.9.2**。
 
-[下载安装包](https://github.com/wanhangyu/x-browser-helper/releases/latest) · [安装方法](#安装方法) · [使用说明](#开始使用) · [隐私说明](PRIVACY.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/wanhangyu/x-browser-helper/issues)
+### 一键安装
+
+**[在 Microsoft Edge 商店免费安装 →](https://microsoftedge.microsoft.com/addons/detail/kogibgdbfoeaijhoonhdjddmaihkbfgg)**
+
+Edge 用户点击链接，选择“获取”并确认添加扩展，即可安装；后续通过浏览器接收商店更新。
+
+[Edge 商店安装](https://microsoftedge.microsoft.com/addons/detail/kogibgdbfoeaijhoonhdjddmaihkbfgg) · [下载安装包（Chrome / 手动安装）](https://github.com/wanhangyu/x-browser-helper/releases/latest) · [安装方法](#安装方法) · [使用说明](#开始使用) · [隐私说明](PRIVACY.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/wanhangyu/x-browser-helper/issues)
 
 ## 项目来源与改编说明
 
@@ -89,7 +95,17 @@
 
 ## 安装方法
 
-当前通过浏览器的“加载已解压的扩展程序”安装。
+### Microsoft Edge：商店安装（推荐）
+
+1. 用 Edge 打开 **[X 浏览助手商店页面](https://microsoftedge.microsoft.com/addons/detail/kogibgdbfoeaijhoonhdjddmaihkbfgg)**。
+2. 点击**获取**，确认**添加扩展**。
+3. 打开或刷新 [x.com/home](https://x.com/home)，点击页面侧边的 **X 助手** 标签。
+
+商店安装后由浏览器接收后续已发布版本的更新，无需下载和覆盖文件。
+
+### Chrome / 开发调试：手动安装
+
+Chrome 用户及需要加载本地源码的用户，可通过“加载已解压的扩展程序”安装。
 
 1. 在 [Releases](https://github.com/wanhangyu/x-browser-helper/releases/latest) 下载附件 **`x-browser-helper-1.9.2.zip`**，解压到一个固定文件夹。同页 `.sha256` 附件用于核对文件完整性。
 2. 打开扩展管理页：Chrome 输入 `chrome://extensions`，Edge 输入 `edge://extensions`。
@@ -111,11 +127,15 @@ x-browser-helper/        ← 安装时选择这个文件夹
 
 ### 已安装用户如何更新
 
+**Edge 商店版**由浏览器接收商店更新。**手动安装版**按以下步骤更新：
+
 1. 下载新安装包，把其中 `x-browser-helper` 内文件覆盖到**浏览器原来加载的文件夹**。
 2. 在扩展管理页找到 **X 浏览助手**，点击**重新加载**。
 3. 刷新 X 页面。
 
 沿用原文件夹和当前浏览器配置，可保留已有固定搜索与设置。更新通常无需卸载；卸载可能清除本地数据。下载包的名称可以变化，浏览器实际加载的文件夹路径应保持稳定。
+
+本地开发版与商店版是独立安装，设置不会自动迁移；切换时先停用旧版，避免两个版本同时运行。
 
 ## 开始使用
 
