@@ -1,6 +1,6 @@
 {
   "name": "x-browser-helper",
-  "version": "1.8.5",
+  "version": "1.9.2",
   "private": true,
   "description": "X 浏览助手：账号信息、帖子热度榜、固定搜索、简介翻译与沉浸阅读。",
   "license": "MIT",
@@ -10,7 +10,7 @@
   "scripts": {
     "build": "node scripts/build.cjs",
     "verify": "node scripts/verify.cjs",
-    "test": "node scripts/verify.cjs && node tests/core.test.cjs && node tests/translation.test.cjs",
+    "test": "node scripts/verify.cjs && node tests/core.test.cjs && node tests/translation.test.cjs && node tests/extras.test.cjs",
     "test:browser": "node scripts/test-browser.cjs",
     "package": "python scripts/package.py"
   },

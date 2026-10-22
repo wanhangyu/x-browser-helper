@@ -2,9 +2,20 @@
 
 **免费开源的 X / Twitter 浏览增强插件。看帖子热度、找本页热点、了解账号、保存搜索，让日常浏览更顺手。**
 
-适用于桌面 **Chrome / Microsoft Edge**，采用 **MIT License**。当前版本 **1.8.5**。
+适用于桌面 **Chrome / Microsoft Edge**，采用 **MIT License**。当前版本 **1.9.2**。
 
 [下载安装包](https://github.com/wanhangyu/x-browser-helper/releases/latest) · [安装方法](#安装方法) · [使用说明](#开始使用) · [隐私说明](PRIVACY.md) · [更新记录](CHANGELOG.md) · [反馈问题](https://github.com/wanhangyu/x-browser-helper/issues)
+
+## 项目来源与改编说明
+
+**本项目在已有开源项目的代码与思路上做适配和整合。本次图片增强、长图阅读与过滤规则，主要复用并改编自 [IcyCat 的 X Viral Monitor（X 爆款监测）](https://github.com/Icy-Cat/x-viral-monitor)。感谢原作者开放源码。**
+
+| 来源项目 | 本项目实际使用与改编的部分 |
+| --- | --- |
+| [Icy-Cat/x-viral-monitor](https://github.com/Icy-Cat/x-viral-monitor) | 图片缩放与拖动、长图纵向阅读、相关样式及内置过滤规则；Markdown 分享入口与规则结构参考其设计，结合本项目数据通道重写 |
+| [yiren-ai/xpandmax](https://github.com/yiren-ai/xpandmax) | 简介翻译、翻译接口设置、手动关注，以及部分阅读样式 |
+
+我们主要围绕自己的使用习惯做界面整合、设置简化、功能取舍、稳定性适配与测试，保留实际复用代码的原始 MIT 许可和来源。本仓库继续免费开源。具体来源提交、文件和改动范围见 [第三方代码说明](THIRD_PARTY_NOTICES.md)，安装包内也保留许可文件。
 
 ## 能帮你做什么
 
@@ -15,6 +26,24 @@
 - **按需了解作者**：可开启作者简介、中文翻译与手动关注入口，默认保持简洁。
 
 插件本身免费使用，源代码公开，功能无需购买授权。你可以阅读源码、提出建议，或按项目许可证自行修改。可选在线翻译由你自行选择服务；其中自定义模型服务可能按服务商规则收费。
+
+## 阅读与创作工具
+
+| 功能 | 入口与用法 |
+| --- | --- |
+| 书签数 | 推文原生书签按钮旁显示；尚未读到指标显示“—”，已有原生数字时不重复添加 |
+| 图片查看增强 | 打开图片后 Ctrl＋滚轮缩放、放大后拖动、双击切换缩放；＋／－调整，0 复位 |
+| 长图阅读 | 图片高宽比大于 3 时纵向滚动阅读，并尝试加载 X 已有高清版本；不影响其他图片的正常缩放 |
+| 可选复制格式 | 设置 → 图片与分享：选择纯正文或带出处 Markdown，可选择 Markdown 是否包含图片链接；分享菜单只保留一个复制入口 |
+| 内容过滤 | 设置 → 内容过滤，默认关闭；开启后折叠匹配内容，支持单条展开与保留账号 |
+| 自定义规则 | 每行一条，默认匹配正文；也支持“正文:”“作者:”“昵称:”“简介:”“链接:”前缀，按字面匹配 |
+| 远程规则更新 | 内容过滤 → 远程规则更新与授权；本人授权后从固定 GitHub 来源更新 JSON，失败保留有效规则 |
+
+图片与分享开关集中在设置的“图片与分享”中。过滤内置轻度、标准、严格三级，自定义规则最多 100 条，匹配使用字段的前 6000 字符。关闭过滤会恢复折叠内容，原有热度筛选仍按自己的设置生效。过滤提示使用中文原因，悬停可查看依据；内容过滤标题显示当前已加载帖子中已折叠的条数，展开单条会同步更新统计。统计不会累计已被 X 移出页面的历史帖子。
+
+默认仍为带作者、时间、原帖链接及图片的 Markdown。纯正文模式不附加出处和图片，图片选项暂不可用但保留原选择；切回 Markdown 时继续生效。选择与开关都会保存。
+
+复制导出当前已取得的帖子数据，不承诺完整线程、全部评论或 X Articles 的完整富文本。
 
 ## 界面预览
 
@@ -62,7 +91,7 @@
 
 当前通过浏览器的“加载已解压的扩展程序”安装。
 
-1. 在 [Releases](https://github.com/wanhangyu/x-browser-helper/releases/latest) 下载附件 **`x-browser-helper-1.8.5.zip`**，解压到一个固定文件夹。同页 `.sha256` 附件用于核对文件完整性。
+1. 在 [Releases](https://github.com/wanhangyu/x-browser-helper/releases/latest) 下载附件 **`x-browser-helper-1.9.2.zip`**，解压到一个固定文件夹。同页 `.sha256` 附件用于核对文件完整性。
 2. 打开扩展管理页：Chrome 输入 `chrome://extensions`，Edge 输入 `edge://extensions`。
 3. 开启页面上的**开发者模式**。
 4. 点击**加载已解压的扩展程序**。
@@ -240,4 +269,4 @@ docs/images/     合成页面演示截图
 
 本项目由 [万航宇](https://github.com/wanhangyu) 独立维护，采用 [MIT License](LICENSE)，免费开源。
 
-部分翻译与关注组件适配自同为 MIT 许可的 [XpandMax](https://github.com/yiren-ai/xpandmax)。保留原始版权与许可证，实际适配文件和出处见 [第三方说明](THIRD_PARTY_NOTICES.md)。感谢原作者与开源社区。
+部分翻译与关注组件适配自同为 MIT 许可的 [XpandMax](https://github.com/yiren-ai/xpandmax)。保留原始版权与许可证，实际适配文件和出处见 [第三方说明](THIRD_PARTY_NOTICES.md)。图片与长图和过滤规则另改编自 [IcyCat / X Viral Monitor](https://github.com/Icy-Cat/x-viral-monitor)。感谢各位原作者与开源社区。

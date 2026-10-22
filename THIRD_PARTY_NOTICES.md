@@ -12,6 +12,17 @@ X 浏览助手由本项目独立维护。以下实际复用的开源组件保留
 
 随扩展分发的说明位于 [extension/THIRD_PARTY_NOTICES.txt](extension/THIRD_PARTY_NOTICES.txt)。
 
-## 开发工具
+## X Viral Monitor — IcyCat
+
+本轮图片增强与长图阅读的主要实现、内置过滤规则，改编或复用自 **[Icy-Cat/x-viral-monitor](https://github.com/Icy-Cat/x-viral-monitor)**。感谢 IcyCat 公开源码；这些实现并非本项目从零原创。
+
+- 来源提交：`b1b896de5079d672afc9d829beef01c51a0b970c`。
+- 保留许可：[原始 MIT 许可](extension/third-party/x-viral-monitor-LICENSE.txt)。
+- 上游文件：`lib/image-viewer.js`、`lib/long-image-viewer.js`、`styles.css` 的图片样式片段、`src/premium/content-filter/rules.json`。
+- 本地适配：`image-viewer.js`、`long-image-viewer.js`、`media.css`、`filter-rules.js/json`。新增独立开关、规则校验与现有设置的整合。
+- `extras-core.js` 与 `extras.js` 的 Markdown 功能参考上游分享菜单与 `buildTweetMarkdown` 的设计，使用本项目数据通道重写；规则字段设计参考上游，不包含其收费、授权与远程脚本逻辑。
+- 可选远程规则从上游 `main/src/premium/content-filter/rules.json` 更新，仅接收 JSON 数据；内置副本固定于上述提交。
+
+## 开发工具与分发
 
 Playwright 是开发测试依赖，不随扩展打包。版本与依赖许可可通过 `package-lock.json` 及安装后的包信息核对。

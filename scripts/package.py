@@ -6,8 +6,7 @@ import zipfile
 root=Path(__file__).resolve().parent.parent
 folder=root/'extension'
 manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-files={'manifest.json','core.js','dom.js','hook.js','post-dom.js','content.js','content.bundle.js','reading.js','follow.js','popup.html','popup.js','translation.js','translation-background.js','translation-options.js','translation-options.html','translation-options.css','LICENSE','THIRD_PARTY_NOTICES.txt','third-party/xpandmax-LICENSE.txt','使用说明.md'}
-files.update(manifest['icons'].values())
+files={p.relative_to(folder).as_posix() for p in folder.rglob('*') if p.is_file()}
 sources='\n'.join((folder/name).read_text(encoding='utf-8') for name in ['core.js','dom.js','content.js'])
 assert (folder/'content.bundle.js').read_text(encoding='utf-8')==sources,'Run npm run build first'
 dist=root/'dist';dist.mkdir(exist_ok=True)

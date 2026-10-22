@@ -3,3 +3,11 @@ Source commit: c0414c369453d6b6827fca2e700083282aabab8a
 Files: translation.js, translation-background.js, translation-options.js/html/css, follow.js; reading.js also adapts sidebar and notification CSS rules.
 These components are MIT licensed. The original copyright and full license are retained in third-party/xpandmax-LICENSE.txt.
 Local changes adapt the settings branding, allowed X hosts, and author-header location to X 浏览助手.
+
+Image viewer, long-image reader, related CSS and bundled filtering rules are adapted from IcyCat / Icy-Cat/x-viral-monitor:
+https://github.com/Icy-Cat/x-viral-monitor
+Source commit: b1b896de5079d672afc9d829beef01c51a0b970c
+Files: image-viewer.js, long-image-viewer.js, media.css, filter-rules.js/json.
+Markdown menu design and filtering schema informed extras.js and extras-core.js, rewritten for this extension.
+MIT license retained in third-party/x-viral-monitor-LICENSE.txt.
+Local adaptations add independent settings, reversible filtering, rule validation and explicit remote update permission. No upstream licensing, Pro gates or AI service dependencies are included.

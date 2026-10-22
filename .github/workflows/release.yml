@@ -5,7 +5,7 @@ on:
       version:
         description: Version matching the manifest and release notes
         required: true
-        default: '1.8.5'
+        default: '1.9.2'
 permissions:
   contents: read
 jobs:

@@ -1,0 +1,259 @@
+{
+  "version": 2,
+  "levels": {
+    "light": [
+      "hard-telegram-group-funnel"
+    ],
+    "standard": [
+      "hard-telegram-group-funnel",
+      "adult-sex-service-high",
+      "adult-nude-leak-high",
+      "adult-name-offline-high",
+      "adult-location-offline-high",
+      "adult-location-template-high",
+      "spam-gambling-high",
+      "spam-phishing-airdrop-high",
+      "spam-name-click-profile-high",
+      "spam-name-funnel-high",
+      "spam-name-exchange-support-high",
+      "spam-bio-wechat-telegram-funnel-high",
+      "spam-short-symbol-content-high",
+      "spam-bio-zhongtui-high",
+      "spam-content-zhongtui-high",
+      "adult-bio-funnel-platform-high",
+      "adult-bio-profile-template-high",
+      "adult-bio-offline-match-high",
+      "spam-foxlink-invite-url-high",
+      "adult-content-page-funnel-high",
+      "vpn-promo-name-high",
+      "vpn-promo-bio-high",
+      "vpn-affiliate-url-high"
+    ],
+    "strict": [
+      "hard-telegram-group-funnel",
+      "adult-sex-service-high",
+      "adult-nude-leak-high",
+      "adult-name-offline-high",
+      "adult-location-offline-high",
+      "adult-location-template-high",
+      "spam-gambling-high",
+      "spam-phishing-airdrop-high",
+      "spam-name-click-profile-high",
+      "spam-name-funnel-high",
+      "spam-name-exchange-support-high",
+      "spam-bio-wechat-telegram-funnel-high",
+      "spam-short-symbol-content-high",
+      "spam-bio-zhongtui-high",
+      "spam-content-zhongtui-high",
+      "adult-bio-funnel-platform-high",
+      "adult-bio-profile-template-high",
+      "adult-bio-offline-match-high",
+      "spam-foxlink-invite-url-high",
+      "adult-content-page-funnel-high",
+      "adult-bio-medium",
+      "spam-private-chat-medium",
+      "spam-marketing-medium",
+      "vpn-promo-name-high",
+      "vpn-promo-bio-high",
+      "vpn-affiliate-url-high"
+    ]
+  },
+  "rules": [
+    {
+      "id": "hard-telegram-group-funnel",
+      "type": "regex",
+      "field": "content",
+      "value": "(t\\.me|telegram|电报|飞机).{0,32}(福利(资源|视频|社群|社区|导航|群|频道)|成人(资源|视频)|成人视频|私信(加入|加群|进群|领取|获取)|加(群|频道)|进群|群里.{0,8}(福利|资源|视频|约|广告)|频道.{0,8}(福利|资源|视频|广告)|同城.{0,8}(线下|上门|可约)|线下.{0,8}(约|上门|见面)|上门|约P|约炮|曰泡|宝宝.{0,6}(点这里|主页|私信))",
+      "severity": "block"
+    },
+    {
+      "id": "adult-sex-service-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(约炮|裸聊|外围|包养|上门服务|援交|同城可约)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-nude-leak-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(私房照|裸照|流出|国产自拍|成人视频|成人资源)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-bio-medium",
+      "type": "regex",
+      "field": "bio",
+      "value": "(性生理|两性|私密|成人视频|成人|福利姬)",
+      "severity": "medium"
+    },
+    {
+      "id": "adult-name-offline-high",
+      "type": "regex",
+      "field": "name",
+      "value": "(同城上门|同城约|同城.{0,8}纯[曰日].{0,8}线下|约见|约P|固炮|曰泡|上门|资源入口|线下约见|真实约见|看我(简介|主页|置顶)|点我(头像|主页)|点击主页)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-location-offline-high",
+      "type": "regex",
+      "field": "location",
+      "value": "(联系.{0,6}(直接)?点击大号|点击大号|看大号|约线下|(同城|附近).{0,6}(可约|线下|见面))",
+      "severity": "high"
+    },
+    {
+      "id": "adult-location-template-high",
+      "type": "regex",
+      "field": "location",
+      "value": "(小号已禁言|来这里找我|可以来.{0,4}找我|加我.{0,4}小号|找我.{0,4}玩|私聊.{0,4}主号)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-soft-low",
+      "type": "regex",
+      "field": "content",
+      "value": "(福利视频|擦边|大尺度|黑丝|写真)",
+      "severity": "low"
+    },
+    {
+      "id": "spam-gambling-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(博彩|赌场|娱乐城|投注平台|澳门线上娱乐|百家乐|体育投注)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-phishing-airdrop-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(空投|领取奖励|钱包授权|助记词|私钥|钓鱼链接|claim now)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-name-click-profile-high",
+      "type": "regex",
+      "field": "name",
+      "value": "(点击主页|点主页|看主页|主页看|主页有)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-name-funnel-high",
+      "type": "regex",
+      "field": "name",
+      "value": "(点(我)?(头像|主页)|点击(头像|主页)|看(我)?(头像|主页)|互联网赚|网赚|返佣|费破|免费.{0,4}(破|约|曰|上门|看|p|P|泡))|免费曰[pP]?|免费上门|免费约[pP]?|约见|约P|固炮|同城上门",
+      "severity": "high"
+    },
+    {
+      "id": "spam-name-exchange-support-high",
+      "type": "regex",
+      "field": "name",
+      "value": "((商务小窗|在线接待|高返|返佣).{0,18}bitmart\\d{0,8}|bitmart\\d{0,8}.{0,18}(商务小窗|在线接待|高返|返佣))",
+      "severity": "high"
+    },
+    {
+      "id": "spam-bio-wechat-telegram-funnel-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "((卫星|微信|wechat|vx|wx)[0-9一二三]?\\s*[:：].{0,80}){2,}(tg|telegram|电报)\\s*[:：].{0,80}(详细点|其他也有做)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-short-symbol-content-high",
+      "type": "short-symbol",
+      "field": "content",
+      "value": "short-symbol-or-emoji",
+      "severity": "high"
+    },
+    {
+      "id": "spam-bio-zhongtui-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "(加群|接推广|电报.{0,12}(频道|群|资源|福利)|telegram.{0,12}(频道|群|资源|福利)|福利(资源|视频|社群|社区|导航|姬|群|频道)|t\\.me.{0,20}资源)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-bio-funnel-platform-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "(曰炮|曰[pP]平台|约炮平台|约[pP]平台|炮友平台|入驻.{0,6}(曰|约)[炮pP]|真人认证.{0,12}(隐私|平台|安全|保护)|小号已禁言.{0,12}大号|附近.{0,4}(可)?加[vV微]|加[vV微].{0,4}(私聊|约|看|附近))",
+      "severity": "high"
+    },
+    {
+      "id": "adult-bio-profile-template-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "(🔞.{0,40}(性癖|约|联系|私聊|主页|不飞|可飞|加我|🇨🇳)|性癖|盗图死全家|盗图.{0,4}死全家|全网仅此一号|无门无电报|不可飞.{0,8}盗图|这里只有.{0,4}性癖|bbw.{0,8}(bi|tomboy|virgin|sub|dom))",
+      "severity": "high"
+    },
+    {
+      "id": "adult-bio-offline-match-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "(全网[独首]?[创发家].{0,16}(线下|社交|约|匹配)|线下.{0,4}社交.{0,4}匹配|线下.{0,4}约[pP社]|社交.{0,4}匹配.{0,4}平台|一至五线|覆盖.{0,8}一至五线|免费约[pP]|附近.{0,4}速配|资源.{0,4}牵线|靠谱.{0,2}中介|资源.{0,2}对接.{0,4}附近|无.{0,2}App.{0,12}(中介|牵线|约|资源))",
+      "severity": "high"
+    },
+    {
+      "id": "spam-foxlink-invite-url-high",
+      "type": "regex",
+      "field": "url",
+      "value": "https?://(www\\.)?foxlink\\.top/invite(?:/|[?#]|$)",
+      "severity": "high"
+    },
+    {
+      "id": "adult-content-page-funnel-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(主页.{0,4}(打|看|来|约|玩)?.{0,4}✈️|打✈️|去.{0,4}主页.{0,4}(看|玩|约|找)|没人比.{0,4}(她)?.{0,4}(骚|sao)|比她.{0,4}(骚|sao).{0,4}(好|没她)|sao货|骚货|(太|真|很|超).{0,2}涩了|涩到顶不住|sao爆了|骚爆了|顶不住.{0,4}(她|想|要)|刷.{0,4}半天.{0,4}就她.{0,4}主页|30\\+.{0,20}(sao|骚|涩|[反返]差)|体制内.{0,12}(sao|骚|涩|[反返]差)|sao的很|骚的很|玩.{0,2}的就是[反返]差)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-content-zhongtui-high",
+      "type": "regex",
+      "field": "content",
+      "value": "(加群|接推广|电报.{0,12}(频道|群|资源|福利)|telegram.{0,12}(频道|群|资源|福利)|福利(资源|视频|社群|社区|导航|姬|群|频道)|t\\.me.{0,20}资源)",
+      "severity": "high"
+    },
+    {
+      "id": "spam-private-chat-medium",
+      "type": "regex",
+      "field": "content",
+      "value": "(私信|私讯|加我|进群|群聊).{0,16}(福利|资源|项目|带你|名额)",
+      "severity": "medium"
+    },
+    {
+      "id": "spam-marketing-medium",
+      "type": "regex",
+      "field": "content",
+      "value": "(进社群|合作.*微信|推广案例|网盘拉新|空投|合约|暴富)",
+      "severity": "medium"
+    },
+    {
+      "id": "spam-crypto-low",
+      "type": "regex",
+      "field": "content",
+      "value": "(合约带单|百倍币|稳赚|暴富密码|充值返利)",
+      "severity": "low"
+    },
+    {
+      "id": "vpn-promo-name-high",
+      "type": "regex",
+      "field": "name",
+      "value": "(测评|评测|推荐|优惠|折扣|梯子|机场|加速)[^,，]{0,6}vpn|vpn[^,，]{0,8}(测评|评测|推荐|工具|优惠|折扣|梯子|机场|加速)|(节点|机场)[^,，]{0,4}订阅|foxlink[^,，]{0,8}(节点|订阅|机场|vpn)|银狐节点",
+      "severity": "high"
+    },
+    {
+      "id": "vpn-promo-bio-high",
+      "type": "regex",
+      "field": "bio",
+      "value": "(稳定(的)?网络|科学上网|翻墙|梯子|vpn)[^。]{0,20}(重要|必备|刚需|一直在用|推荐|测评|优惠)|这款[^。]{0,10}一直在用[^。]{0,6}[👇⬇]|这款[^。]{0,8}(vpn|节点)|(流畅|稳定)上网[^。]{0,16}(试试|推荐|一直在用)",
+      "severity": "high"
+    },
+    {
+      "id": "vpn-affiliate-url-high",
+      "type": "regex",
+      "field": "url",
+      "value": "https?://(www\\.)?fl1\\.me(/|[?#]|$)",
+      "severity": "high"
+    }
+  ]
+}

@@ -55,7 +55,7 @@
       const id=String(v.rest_id),invalid=promoted||(v.views?.state!==undefined&&v.views.state!=='EnabledWithCount');
       const quoted=v.quoted_status_result?.result;
       const quotedId=String(l.quoted_status_id_str??quoted?.rest_id??quoted?.tweet?.rest_id??'');
-      if(!tweets.get(id)?.invalid) tweets.set(id,{id,handle:author?.handle||'',name:author?.name||'',text:String(note||l.full_text||'').slice(0,20000),created:date,views:invalid?null:first(v.views?.count,l.views_count,v.public_metrics?.impression_count),invalid,quotedId:/^\d{1,30}$/.test(quotedId)?quotedId:null,likes:first(l.favorite_count),reposts:first(l.retweet_count),replies:first(l.reply_count),bookmarks:first(l.bookmark_count),at:now});
+      if(!tweets.get(id)?.invalid) tweets.set(id,{id,handle:author?.handle||'',name:author?.name||'',text:String(note||l.full_text||'').slice(0,100000),truncated:String(note||l.full_text||'').length>100000,urls:(v.note_tweet?.note_tweet_results?.result?.entity_set?.urls||l.entities?.urls||[]).slice(0,100).map(e=>({url:String(e.url||'').slice(0,500),expanded_url:String(e.expanded_url||'').slice(0,2000)})),media:(l.extended_entities?.media||l.entities?.media||[]).slice(0,20).map(e=>({type:e.type,url:String(e.media_url_https||'').slice(0,2000),alt:String(e.ext_alt_text||'').slice(0,1000)})),created:date,views:invalid?null:first(v.views?.count,l.views_count,v.public_metrics?.impression_count),invalid,quotedId:/^\d{1,30}$/.test(quotedId)?quotedId:null,likes:first(l.favorite_count),reposts:first(l.retweet_count),replies:first(l.reply_count),bookmarks:first(l.bookmark_count),at:now});
      }
     }
    }

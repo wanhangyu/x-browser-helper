@@ -3,7 +3,7 @@ const root=path.resolve(__dirname,'..'),folder=path.join(root,'extension'),manif
 const sources=['core.js','dom.js','content.js'].map(name=>fs.readFileSync(path.join(folder,name),'utf8').replace(/\r\n/g,'\n')).join('\n');
 assert.equal(fs.readFileSync(path.join(folder,'content.bundle.js'),'utf8').replace(/\r\n/g,'\n'),sources,'Run npm run build after source changes');
 for(const name of fs.readdirSync(folder).filter(name=>name.endsWith('.js')))new vm.Script(fs.readFileSync(path.join(folder,name),'utf8'),{filename:name});
-const required=manifest.content_scripts.flatMap(group=>group.js).concat(Object.values(manifest.icons),manifest.action.default_popup,manifest.background.service_worker,manifest.options_page,'LICENSE','THIRD_PARTY_NOTICES.txt','third-party/xpandmax-LICENSE.txt');
+const required=manifest.content_scripts.flatMap(group=>[...group.js,...(group.css||[])]).concat(Object.values(manifest.icons),manifest.action.default_popup,manifest.background.service_worker,manifest.options_page,'LICENSE','THIRD_PARTY_NOTICES.txt','third-party/xpandmax-LICENSE.txt','third-party/x-viral-monitor-LICENSE.txt','rules-background.js','rules-options.html','rules-options.js','filter-rules.json');
 for(const name of required)assert.ok(fs.existsSync(path.join(folder,name)),name);
 assert.deepEqual(manifest.permissions,['storage','activeTab']);assert.equal(manifest.host_permissions,undefined);
 assert.equal(JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8')).version,manifest.version);

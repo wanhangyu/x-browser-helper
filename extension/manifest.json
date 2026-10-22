@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "X 浏览助手",
-  "version": "1.8.5",
-  "description": "X 帖子平均热度、本页热点榜、账号粉丝与简介翻译、固定搜索、沉浸阅读，帮助你发现和筛选有价值的内容。",
+  "version": "1.9.2",
+  "description": "X 帖子平均热度、热点榜、粉丝与书签数、图片缩放与长图阅读、内容过滤、Markdown 复制与固定搜索。",
   "permissions": [
     "storage",
     "activeTab"
@@ -38,16 +38,25 @@
       ],
       "js": [
         "post-dom.js",
+        "extras-core.js",
+        "filter-rules.js",
+        "extras.js",
+        "long-image-viewer.js",
+        "image-viewer.js",
         "content.bundle.js",
         "translation.js",
         "follow.js",
         "reading.js"
       ],
-      "run_at": "document_start"
+      "run_at": "document_start",
+      "css": [
+        "extras.css",
+        "media.css"
+      ]
     }
   ],
   "background": {
-    "service_worker": "translation-background.js"
+    "service_worker": "background.js"
   },
   "options_page": "translation-options.html",
   "optional_host_permissions": [
